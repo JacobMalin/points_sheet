@@ -32,12 +32,43 @@ class EmployeeTable extends Table {
   IntColumn get points => integer().withDefault(const Constant(0))();
 }
 
-@DriftDatabase(tables: [EmployeeTable])
+class HistoryTable extends Table {
+  IntColumn get id => integer().autoIncrement()();
+  TextColumn get actionType => text()();
+  TextColumn get description => text().withDefault(const Constant(''))();
+  TextColumn get actor => text().withDefault(const Constant(''))();
+  TextColumn get employee => text().nullable()();
+  TextColumn get points => text().nullable()();
+  DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
+}
+
+@DriftDatabase(tables: [EmployeeTable, HistoryTable])
 class AppDatabase extends _$AppDatabase {
   AppDatabase([QueryExecutor? executor]) : super(executor ?? _openConnection());
 
   @override
-  int get schemaVersion => 1;
+  int get schemaVersion => 5;
+
+  @override
+  MigrationStrategy get migration => MigrationStrategy(
+    onCreate: (m) async => m.createAll(),
+    onUpgrade: (m, from, to) async {
+      if (from < 2) {
+        await m.createTable(historyTable);
+      } else {
+        if (from < 3) {
+          await m.addColumn(historyTable, historyTable.description);
+        }
+        if (from < 4) {
+          await m.addColumn(historyTable, historyTable.employee);
+          await m.addColumn(historyTable, historyTable.points);
+        }
+      }
+      if (from < 5) {
+        await m.alterTable(TableMigration(historyTable));
+      }
+    },
+  );
 
   static QueryExecutor _openConnection() {
     return driftDatabase(
@@ -79,4 +110,29 @@ class EmployeeDao extends DatabaseAccessor<AppDatabase>
   Future<int> deleteEmployee(Employee employee) => (delete(
     employeeTable,
   )..where((tbl) => tbl.id.equals(employee.data.id))).go();
+}
+
+@DriftAccessor(tables: [HistoryTable])
+class HistoryDao extends DatabaseAccessor<AppDatabase> with _$HistoryDaoMixin {
+  HistoryDao(super.attachedDatabase);
+
+  Stream<List<HistoryTableData>> watchAllEntries() => (select(
+    historyTable,
+  )..orderBy([(entry) => OrderingTerm.desc(entry.id)])).watch();
+
+  Future<int> addEntry({
+    required String actionType,
+    required String description,
+    required String actor,
+    String? employee,
+    String? points,
+  }) => into(historyTable).insert(
+    HistoryTableCompanion.insert(
+      actionType: actionType,
+      description: Value(description),
+      actor: Value(actor),
+      employee: Value(employee),
+      points: Value(points),
+    ),
+  );
 }

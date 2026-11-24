@@ -1,7 +1,10 @@
 import 'package:flutter/services.dart';
+import 'package:intl/intl.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:points_sheet/database.dart';
 import 'package:provider/provider.dart';
+
+import 'history_page.dart';
 
 class _EmployeeName {
   const _EmployeeName(this.firstName, this.lastName);
@@ -22,6 +25,7 @@ class ActionsBar extends StatelessWidget {
   Future<void> _addEmployee(BuildContext context) async {
     final firstNameController = TextEditingController();
     final lastNameController = TextEditingController();
+    final lastNameFocusNode = FocusNode();
     final multipleNamesController = TextEditingController();
     final formKey = GlobalKey<FormState>();
     var multiple = false;
@@ -36,6 +40,20 @@ class ActionsBar extends StatelessWidget {
           final inputMaxHeight = availableHeight > 432
               ? availableHeight - 320
               : 112.0;
+
+          void submit() {
+            if (!formKey.currentState!.validate()) return;
+
+            final employees = multiple
+                ? _parseEmployeeNames(multipleNamesController.text)
+                : [
+                    _EmployeeName(
+                      firstNameController.text.trim(),
+                      lastNameController.text.trim(),
+                    ),
+                  ];
+            Navigator.of(dialogContext).pop(_EmployeesToAdd(employees));
+          }
 
           return StatefulBuilder(
             builder: (context, setDialogState) => AlertDialog(
@@ -113,6 +131,9 @@ class ActionsBar extends StatelessWidget {
                                   TextFormField(
                                     controller: firstNameController,
                                     autofocus: true,
+                                    textInputAction: TextInputAction.next,
+                                    onFieldSubmitted: (_) =>
+                                        lastNameFocusNode.requestFocus(),
                                     decoration: const InputDecoration(
                                       labelText: 'First name',
                                       border: OutlineInputBorder(),
@@ -127,6 +148,9 @@ class ActionsBar extends StatelessWidget {
                                   const SizedBox(height: 16),
                                   TextFormField(
                                     controller: lastNameController,
+                                    focusNode: lastNameFocusNode,
+                                    textInputAction: TextInputAction.done,
+                                    onFieldSubmitted: (_) => submit(),
                                     decoration: const InputDecoration(
                                       labelText: 'Last name',
                                       border: OutlineInputBorder(),
@@ -146,22 +170,7 @@ class ActionsBar extends StatelessWidget {
                   onPressed: () => Navigator.of(dialogContext).pop(),
                   child: const Text('Cancel'),
                 ),
-                FilledButton(
-                  onPressed: () {
-                    if (!formKey.currentState!.validate()) return;
-
-                    final employees = multiple
-                        ? _parseEmployeeNames(multipleNamesController.text)
-                        : [
-                            _EmployeeName(
-                              firstNameController.text.trim(),
-                              lastNameController.text.trim(),
-                            ),
-                          ];
-                    Navigator.of(dialogContext).pop(_EmployeesToAdd(employees));
-                  },
-                  child: const Text('Add'),
-                ),
+                FilledButton(onPressed: submit, child: const Text('Add')),
               ],
             ),
           );
@@ -197,10 +206,26 @@ class ActionsBar extends StatelessWidget {
             }
           }
 
+          final historyDao = HistoryDao(database);
           for (final employee in uniqueEmployees) {
             await dao.addEmployee(
               firstName: employee.firstName,
               lastName: employee.lastName,
+            );
+          }
+          if (uniqueEmployees.isNotEmpty) {
+            await historyDao.addEntry(
+              actionType: uniqueEmployees.length == 1
+                  ? 'Employee added'
+                  : 'Employees added',
+              description: '',
+              employee: uniqueEmployees
+                  .map(
+                    (employee) =>
+                        '${employee.firstName} ${employee.lastName}'.trim(),
+                  )
+                  .join('\n'),
+              actor: '',
             );
           }
           return duplicates.toList();
@@ -231,14 +256,276 @@ class ActionsBar extends StatelessWidget {
     } finally {
       firstNameController.dispose();
       lastNameController.dispose();
+      lastNameFocusNode.dispose();
       multipleNamesController.dispose();
     }
   }
 
   Future<void> _massAddPoints(BuildContext context) async {
-    await Navigator.of(context).push<void>(
-      MaterialPageRoute<void>(builder: (context) => const _MassAddPointsPage()),
+    await showDialog<void>(
+      context: context,
+      builder: (context) => const _MassAddPointsDialog(),
     );
+  }
+
+  Future<void> _openHistory(BuildContext context) async {
+    await Navigator.of(context).push<void>(
+      PageRouteBuilder<void>(
+        pageBuilder: (context, animation, secondaryAnimation) =>
+            const HistoryPage(),
+        transitionDuration: Duration.zero,
+        reverseTransitionDuration: Duration.zero,
+        transitionsBuilder: (context, animation, secondaryAnimation, child) =>
+            child,
+      ),
+    );
+  }
+
+  Future<void> _deleteEmployee(BuildContext context) async {
+    final database = context.read<AppDatabase>();
+    List<Employee> employees;
+
+    try {
+      employees = await EmployeeDao(database).getAllEmployees();
+      employees.sort((a, b) {
+        final firstNameComparison = a.data.firstName.toLowerCase().compareTo(
+          b.data.firstName.toLowerCase(),
+        );
+        if (firstNameComparison != 0) return firstNameComparison;
+        return a.data.lastName.toLowerCase().compareTo(
+          b.data.lastName.toLowerCase(),
+        );
+      });
+    } catch (error) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Could not load employees: $error')),
+      );
+      return;
+    }
+
+    if (!context.mounted) return;
+
+    final selectedEmployeeIds = <int>{};
+    final selectedEmployees = await showDialog<List<Employee>>(
+      context: context,
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          constraints: const BoxConstraints(maxWidth: 1400),
+          title: const Text('Delete employees'),
+          content: employees.isEmpty
+              ? const Text('No employees to delete.')
+              : SizedBox(
+                  width: 1320,
+                  child: ConstrainedBox(
+                    constraints: BoxConstraints(
+                      maxHeight: MediaQuery.sizeOf(dialogContext).height * 0.6,
+                    ),
+                    child: GridView.builder(
+                      shrinkWrap: true,
+                      gridDelegate:
+                          const SliverGridDelegateWithMaxCrossAxisExtent(
+                            maxCrossAxisExtent: 210,
+                            mainAxisExtent: 54,
+                            crossAxisSpacing: 8,
+                            mainAxisSpacing: 8,
+                          ),
+                      itemCount: employees.length,
+                      itemBuilder: (context, index) {
+                        final employee = employees[index];
+                        final employeeId = employee.data.id;
+                        final isSelected = selectedEmployeeIds.contains(
+                          employeeId,
+                        );
+
+                        void updateSelection(bool? selected) {
+                          setDialogState(() {
+                            if (selected == true) {
+                              selectedEmployeeIds.add(employeeId);
+                            } else {
+                              selectedEmployeeIds.remove(employeeId);
+                            }
+                          });
+                        }
+
+                        return Card(
+                          margin: EdgeInsets.zero,
+                          clipBehavior: Clip.antiAlias,
+                          child: SizedBox.expand(
+                            child: InkWell(
+                              onTap: () => updateSelection(!isSelected),
+                              child: Padding(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 8,
+                                ),
+                                child: Row(
+                                  children: [
+                                    Checkbox(
+                                      value: isSelected,
+                                      onChanged: updateSelection,
+                                    ),
+                                    const SizedBox(width: 4),
+                                    Expanded(
+                                      child: Column(
+                                        mainAxisAlignment:
+                                            MainAxisAlignment.center,
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          Text(
+                                            employee.name,
+                                            maxLines: 1,
+                                            overflow: TextOverflow.ellipsis,
+                                          ),
+                                          Text(
+                                            'Points: ${employee.formattedPoints}',
+                                            maxLines: 1,
+                                            overflow: TextOverflow.ellipsis,
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(),
+              child: const Text('Cancel'),
+            ),
+            FilledButton(
+              onPressed: selectedEmployeeIds.isEmpty
+                  ? null
+                  : () => Navigator.of(dialogContext).pop(
+                      employees
+                          .where(
+                            (employee) =>
+                                selectedEmployeeIds.contains(employee.data.id),
+                          )
+                          .toList(),
+                    ),
+              child: Text('Continue (${selectedEmployeeIds.length})'),
+            ),
+          ],
+        ),
+      ),
+    );
+
+    if (selectedEmployees == null ||
+        selectedEmployees.isEmpty ||
+        !context.mounted) {
+      return;
+    }
+
+    final employeeLabel = selectedEmployees.length == 1
+        ? 'employee'
+        : 'employees';
+    final totalPoints = selectedEmployees.fold<int>(
+      0,
+      (total, employee) => total + employee.data.points,
+    );
+    final selectedEmployeeNames = selectedEmployees
+        .map(
+          (employee) =>
+              '${employee.data.firstName} ${employee.data.lastName}'.trim(),
+        )
+        .toList();
+
+    final shouldDelete = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: Text('Delete ${selectedEmployees.length} $employeeLabel?'),
+        content: SizedBox(
+          width: 420,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('This will permanently delete the selected $employeeLabel:'),
+              const SizedBox(height: 8),
+              ConstrainedBox(
+                constraints: const BoxConstraints(maxHeight: 240),
+                child: ListView.separated(
+                  shrinkWrap: true,
+                  itemCount: selectedEmployeeNames.length,
+                  separatorBuilder: (context, index) =>
+                      const Divider(height: 1),
+                  itemBuilder: (context, index) => Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 6),
+                    child: Text(selectedEmployeeNames[index]),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'Total points to be deleted: ${NumberFormat().format(totalPoints)}',
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            child: const Text('Delete selected'),
+          ),
+        ],
+      ),
+    );
+
+    if (shouldDelete != true || !context.mounted) return;
+
+    try {
+      await database.transaction(() async {
+        final dao = EmployeeDao(database);
+        final historyDao = HistoryDao(database);
+        final employeeNames = <String>[];
+        final deletedPointValues = <String>[];
+        var totalPointsDeleted = 0;
+        final currentEmployees = {
+          for (final employee in await dao.getAllEmployees())
+            employee.data.id: employee,
+        };
+        for (final selectedEmployee in selectedEmployees) {
+          final employee = currentEmployees[selectedEmployee.data.id];
+          if (employee == null) continue;
+
+          final deletedRows = await dao.deleteEmployee(employee);
+          if (deletedRows == 0) continue;
+
+          final employeeName =
+              '${employee.data.firstName} ${employee.data.lastName}'.trim();
+          employeeNames.add(employeeName);
+          totalPointsDeleted += employee.data.points;
+          deletedPointValues.add(employee.formattedPoints);
+        }
+        if (employeeNames.isNotEmpty) {
+          await historyDao.addEntry(
+            actionType: 'Employees deleted',
+            description:
+                'Total points deleted: ${NumberFormat().format(totalPointsDeleted)}',
+            actor: '',
+            employee: employeeNames.join('\n'),
+            points: deletedPointValues.join('\n'),
+          );
+        }
+      });
+    } catch (error) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Unable to delete $employeeLabel: $error')),
+      );
+    }
   }
 
   static List<_EmployeeName> _parseEmployeeNames(String text) {
@@ -304,6 +591,32 @@ class ActionsBar extends StatelessWidget {
               ),
               child: const Text('Mass add points'),
             ),
+            SizedBox(
+              height: 16,
+              child: VerticalDivider(
+                width: 16,
+                thickness: 1,
+                color: Theme.of(context).colorScheme.outlineVariant,
+              ),
+            ),
+            FilledButton(
+              onPressed: () => _deleteEmployee(context),
+              style: FilledButton.styleFrom(
+                backgroundColor: Theme.of(context).colorScheme.surfaceContainer,
+                foregroundColor: Theme.of(context).colorScheme.onSurface,
+                shape: ContinuousRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+              ),
+              child: const Text('Delete employee'),
+            ),
+            const Spacer(),
+            TextButton.icon(
+              onPressed: () => _openHistory(context),
+              icon: const Icon(Icons.history),
+              label: const Text('History'),
+            ),
           ],
         ),
       ),
@@ -311,14 +624,14 @@ class ActionsBar extends StatelessWidget {
   }
 }
 
-class _MassAddPointsPage extends StatefulWidget {
-  const _MassAddPointsPage();
+class _MassAddPointsDialog extends StatefulWidget {
+  const _MassAddPointsDialog();
 
   @override
-  State<_MassAddPointsPage> createState() => _MassAddPointsPageState();
+  State<_MassAddPointsDialog> createState() => _MassAddPointsDialogState();
 }
 
-class _MassAddPointsPageState extends State<_MassAddPointsPage> {
+class _MassAddPointsDialogState extends State<_MassAddPointsDialog> {
   static const _employeeRowExtent = 32.0;
 
   final _formKey = GlobalKey<FormState>();
@@ -386,6 +699,9 @@ class _MassAddPointsPageState extends State<_MassAddPointsPage> {
       final database = context.read<AppDatabase>();
       await database.transaction(() async {
         final dao = EmployeeDao(database);
+        final historyDao = HistoryDao(database);
+        final employeeNames = <String>[];
+        final pointsAdded = <String>[];
         final currentEmployees = await dao.getAllEmployees();
         for (final employee in currentEmployees) {
           final amountText = _controllers[employee.data.id]?.text.trim() ?? '';
@@ -393,8 +709,23 @@ class _MassAddPointsPageState extends State<_MassAddPointsPage> {
 
           final amount = int.parse(amountText);
           if (amount == 0) continue;
-          await dao.updateEmployee(
+          final updated = await dao.updateEmployee(
             employee.data.copyWith(points: employee.data.points + amount),
+          );
+          if (!updated) continue;
+
+          final employeeName =
+              '${employee.data.firstName} ${employee.data.lastName}'.trim();
+          employeeNames.add(employeeName);
+          pointsAdded.add('+${NumberFormat().format(amount)}');
+        }
+        if (employeeNames.isNotEmpty) {
+          await historyDao.addEntry(
+            actionType: 'Mass add points',
+            description: '',
+            actor: '',
+            employee: employeeNames.reversed.join('\n'),
+            points: pointsAdded.reversed.join('\n'),
           );
         }
       });
@@ -468,7 +799,10 @@ class _MassAddPointsPageState extends State<_MassAddPointsPage> {
         : const Text('Add points');
 
     return FilledButton.tonal(
-      onPressed: _isSaving ? null : _save,
+      onPressed:
+          _isSaving || _isLoading || _loadError != null || _employees.isEmpty
+          ? null
+          : _save,
       child: child,
     );
   }
@@ -484,12 +818,7 @@ class _MassAddPointsPageState extends State<_MassAddPointsPage> {
             builder: (context, constraints) {
               const columnSpacing = 20.0;
               const columnWidth = 200.0;
-              const bottomPadding = 16.0;
-              final availableHeight = constraints.maxHeight.isFinite
-                  ? constraints.maxHeight > bottomPadding
-                        ? constraints.maxHeight - bottomPadding
-                        : 0.0
-                  : constraints.maxHeight;
+              final availableHeight = constraints.maxHeight;
               final rowsThatFit = availableHeight.isFinite
                   ? (availableHeight / _employeeRowExtent)
                         .floor()
@@ -501,7 +830,6 @@ class _MassAddPointsPageState extends State<_MassAddPointsPage> {
               final employeesPerColumn = rowsThatFit;
               final contentWidth =
                   columnWidth * columnCount + columnSpacing * (columnCount - 1);
-              final hasHorizontalScroll = contentWidth > constraints.maxWidth;
               final columns = <Widget>[];
 
               for (var column = 0; column < columnCount; column++) {
@@ -535,61 +863,33 @@ class _MassAddPointsPageState extends State<_MassAddPointsPage> {
                             _employees[columnStart + row],
                             columnStart + row,
                           ),
-                        if (column == columnCount - 1) ...[
-                          SizedBox(
-                            height:
-                                (employeesPerColumn - columnEmployeeCount - 1) *
-                                _employeeRowExtent,
-                          ),
-                          if (!hasHorizontalScroll)
-                            SizedBox(
-                              height: _employeeRowExtent,
-                              child: Padding(
-                                padding: const EdgeInsets.only(bottom: 4),
-                                child: _buildAddPointsButton(),
-                              ),
-                            ),
-                        ],
+                        SizedBox(
+                          height:
+                              (employeesPerColumn - columnEmployeeCount) *
+                              _employeeRowExtent,
+                        ),
                       ],
                     ),
                   ),
                 );
               }
 
-              return Stack(
-                children: [
-                  Column(
-                    children: [
-                      Expanded(
-                        child: Scrollbar(
-                          controller: _horizontalScrollController,
-                          thumbVisibility: true,
-                          child: SingleChildScrollView(
-                            controller: _horizontalScrollController,
-                            scrollDirection: Axis.horizontal,
-                            child: SizedBox(
-                              width: contentWidth,
-                              child: IntrinsicHeight(
-                                child: Row(
-                                  crossAxisAlignment:
-                                      CrossAxisAlignment.stretch,
-                                  children: columns,
-                                ),
-                              ),
-                            ),
-                          ),
-                        ),
+              return Scrollbar(
+                controller: _horizontalScrollController,
+                thumbVisibility: true,
+                child: SingleChildScrollView(
+                  controller: _horizontalScrollController,
+                  scrollDirection: Axis.horizontal,
+                  child: SizedBox(
+                    width: contentWidth,
+                    child: IntrinsicHeight(
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: columns,
                       ),
-                      const SizedBox(height: bottomPadding),
-                    ],
-                  ),
-                  if (hasHorizontalScroll)
-                    Positioned(
-                      right: 0,
-                      bottom: bottomPadding,
-                      child: _buildAddPointsButton(),
                     ),
-                ],
+                  ),
+                ),
               );
             },
           ),
@@ -600,34 +900,44 @@ class _MassAddPointsPageState extends State<_MassAddPointsPage> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        leading: IconButton(
-          tooltip: '',
-          icon: const BackButtonIcon(),
-          onPressed: () => Navigator.maybePop(context),
-        ),
-        title: const Text('Mass add points'),
+    final dialogHeight = (MediaQuery.sizeOf(context).height - 240).clamp(
+      160.0,
+      640.0,
+    );
+
+    return AlertDialog(
+      constraints: const BoxConstraints(maxWidth: 900),
+      title: const Text('Mass add points'),
+      content: SizedBox(
+        width: 820,
+        height: dialogHeight,
+        child: _isLoading
+            ? const Center(child: CircularProgressIndicator())
+            : _loadError != null
+            ? Center(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text('Could not load employees: $_loadError'),
+                    const SizedBox(height: 8),
+                    FilledButton(
+                      onPressed: _loadEmployees,
+                      child: const Text('Retry'),
+                    ),
+                  ],
+                ),
+              )
+            : _employees.isEmpty
+            ? const Center(child: Text('No employees to add points to.'))
+            : _buildEmployeeColumns(context),
       ),
-      body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : _loadError != null
-          ? Center(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text('Could not load employees: $_loadError'),
-                  const SizedBox(height: 8),
-                  FilledButton(
-                    onPressed: _loadEmployees,
-                    child: const Text('Retry'),
-                  ),
-                ],
-              ),
-            )
-          : _employees.isEmpty
-          ? const Center(child: Text('No employees to add points to.'))
-          : _buildEmployeeColumns(context),
+      actions: [
+        TextButton(
+          onPressed: _isSaving ? null : () => Navigator.of(context).pop(),
+          child: const Text('Cancel'),
+        ),
+        _buildAddPointsButton(),
+      ],
     );
   }
 

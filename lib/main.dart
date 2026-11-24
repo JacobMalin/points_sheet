@@ -1,12 +1,18 @@
 import 'package:material_ui/material_ui.dart';
 import 'package:points_sheet/database.dart';
 import 'package:provider/provider.dart';
+import 'package:window_manager/window_manager.dart';
 
 import 'actions_bar.dart';
 import 'points_grid.dart';
 import 'sling.dart';
 
-void main() {
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+
+  final window = WindowManager.instance.getCurrent()!;
+  window.minimumSize = const Size(440, 380).toNative();
+
   runApp(const MyApp());
 }
 
@@ -43,14 +49,6 @@ class HomePage extends StatefulWidget {
   State<HomePage> createState() => _HomePageState();
 }
 
-class Reward {
-  const Reward(this.name, this.pointsRequired, this.color);
-
-  final String name;
-  final int pointsRequired;
-  final Color color;
-}
-
 class _HomePageState extends State<HomePage> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
@@ -64,12 +62,12 @@ class _HomePageState extends State<HomePage> {
   }
 
   final rewards = <Reward>[
-    const Reward('Mocktail', 250, Color.fromARGB(255, 107, 170, 199)),
-    const Reward('Hot Food', 500, Color.fromARGB(255, 195, 173, 75)),
-    const Reward('Any Concessions', 1000, Color.fromARGB(255, 200, 32, 77)),
-    const Reward('I dont remember 2', 1500, Color(0xFFFFC107)),
-    const Reward('I dont remember 3', 2000, Color(0xFFFF5722)),
-    const Reward('I dont remember 4', 2500, Color(0xFF9C27B0)),
+    const Reward('Mocktail', 250),
+    const Reward('Hot Food', 500),
+    const Reward('Any Concessions', 1000),
+    const Reward('I dont remember 2', 1500),
+    const Reward('I dont remember 3', 2000),
+    const Reward('I dont remember 4', 2500),
   ];
 
   @override
@@ -87,7 +85,7 @@ class _HomePageState extends State<HomePage> {
       body: Column(
         children: [
           ActionsBar(),
-          Expanded(child: PointsGrid()),
+          Expanded(child: PointsGrid(rewards: rewards)),
         ],
       ),
     );
