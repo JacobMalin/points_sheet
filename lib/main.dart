@@ -1,17 +1,19 @@
 import 'package:material_ui/material_ui.dart';
 import 'package:points_sheet/database.dart';
+import 'package:points_sheet/history_menu.dart';
 import 'package:provider/provider.dart';
 import 'package:window_manager/window_manager.dart';
 
 import 'actions_bar.dart';
 import 'points_grid.dart';
 import 'sling.dart';
+import 'update_app.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
   final window = WindowManager.instance.getCurrent()!;
-  window.minimumSize = const Size(440, 380).toNative();
+  window.minimumSize = const Size(440, 500).toNative();
 
   runApp(const MyApp());
 }
@@ -53,6 +55,10 @@ class _HomePageState extends State<HomePage> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   String? _authorizationToken;
+  bool _showHistoryMenu = false;
+  bool _clearHistoryMenuScheduled = false;
+
+  final wideLayoutBreakpoint = 720.0;
 
   @override
   void dispose() {
@@ -70,6 +76,12 @@ class _HomePageState extends State<HomePage> {
     const Reward('I dont remember 4', 2500),
   ];
 
+  final writeups = <Writeup>[
+    const Writeup('Behavior Writeup', 100),
+    const Writeup('Attendance Writeup', 500),
+    const Writeup('Till Writeup', 50),
+  ];
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -82,11 +94,53 @@ class _HomePageState extends State<HomePage> {
           const SizedBox(width: 8),
         ],
       ),
-      body: Column(
-        children: [
-          ActionsBar(),
-          Expanded(child: PointsGrid(rewards: rewards)),
-        ],
+      body: LayoutBuilder(
+        builder: (context, constraints) {
+          final useDetailsPanel = constraints.maxWidth >= wideLayoutBreakpoint;
+          if (useDetailsPanel &&
+              _showHistoryMenu &&
+              !_clearHistoryMenuScheduled) {
+            _clearHistoryMenuScheduled = true;
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              if (!mounted) return;
+              setState(() {
+                _showHistoryMenu = false;
+                _clearHistoryMenuScheduled = false;
+              });
+            });
+          }
+
+          return Column(
+            children: [
+              ActionsBar(
+                showHistoryButton: !useDetailsPanel,
+                onOpenHistory: () => setState(() => _showHistoryMenu = true),
+              ),
+              Expanded(
+                child: Stack(
+                  children: [
+                    PointsGrid(
+                      rewards: rewards,
+                      writeups: writeups,
+                      useDetailsPanel: useDetailsPanel,
+                    ),
+                    if (_showHistoryMenu && !useDetailsPanel)
+                      Positioned.fill(
+                        child: ColoredBox(
+                          color: Theme.of(context).colorScheme.surface,
+                          child: HistoryMenu(
+                            onClose: () =>
+                                setState(() => _showHistoryMenu = false),
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+              const UpdateApp(),
+            ],
+          );
+        },
       ),
     );
   }

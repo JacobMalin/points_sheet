@@ -4,8 +4,6 @@ import 'package:material_ui/material_ui.dart';
 import 'package:points_sheet/database.dart';
 import 'package:provider/provider.dart';
 
-import 'history_page.dart';
-
 class _EmployeeName {
   const _EmployeeName(this.firstName, this.lastName);
 
@@ -19,8 +17,28 @@ class _EmployeesToAdd {
   final List<_EmployeeName> employees;
 }
 
-class ActionsBar extends StatelessWidget {
-  const new({super.key});
+class ActionsBar extends StatefulWidget {
+  const ActionsBar({
+    super.key,
+    required this.showHistoryButton,
+    this.onOpenHistory,
+  });
+
+  final bool showHistoryButton;
+  final VoidCallback? onOpenHistory;
+
+  @override
+  State<ActionsBar> createState() => _ActionsBarState();
+}
+
+class _ActionsBarState extends State<ActionsBar> {
+  final _horizontalScrollController = ScrollController();
+
+  @override
+  void dispose() {
+    _horizontalScrollController.dispose();
+    super.dispose();
+  }
 
   Future<void> _addEmployee(BuildContext context) async {
     final firstNameController = TextEditingController();
@@ -265,19 +283,6 @@ class ActionsBar extends StatelessWidget {
     await showDialog<void>(
       context: context,
       builder: (context) => const _MassAddPointsDialog(),
-    );
-  }
-
-  Future<void> _openHistory(BuildContext context) async {
-    await Navigator.of(context).push<void>(
-      PageRouteBuilder<void>(
-        pageBuilder: (context, animation, secondaryAnimation) =>
-            const HistoryPage(),
-        transitionDuration: Duration.zero,
-        reverseTransitionDuration: Duration.zero,
-        transitionsBuilder: (context, animation, secondaryAnimation, child) =>
-            child,
-      ),
     );
   }
 
@@ -555,69 +560,108 @@ class ActionsBar extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       color: Theme.of(context).colorScheme.surfaceContainer,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-        child: Row(
-          children: [
-            FilledButton(
-              onPressed: () => _addEmployee(context),
-              style: FilledButton.styleFrom(
-                backgroundColor: Theme.of(context).colorScheme.surfaceContainer,
-                foregroundColor: Theme.of(context).colorScheme.onSurface,
-                shape: ContinuousRectangleBorder(
-                  borderRadius: BorderRadius.circular(16),
+      child: LayoutBuilder(
+        builder: (context, _) => Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+          child: Row(
+            children: [
+              Expanded(
+                child: Scrollbar(
+                  controller: _horizontalScrollController,
+                  child: SingleChildScrollView(
+                    controller: _horizontalScrollController,
+                    scrollDirection: Axis.horizontal,
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        FilledButton(
+                          onPressed: () => _massAddPoints(context),
+                          style: FilledButton.styleFrom(
+                            backgroundColor: Theme.of(context)
+                                .colorScheme
+                                .surfaceContainer,
+                            foregroundColor: Theme.of(context)
+                                .colorScheme
+                                .onSurface,
+                            shape: ContinuousRectangleBorder(
+                              borderRadius: BorderRadius.circular(16),
+                            ),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 8,
+                            ),
+                          ),
+                          child: const Text('Mass add points'),
+                        ),
+                        SizedBox(
+                          height: 16,
+                          child: VerticalDivider(
+                            width: 16,
+                            thickness: 1,
+                            color: Theme.of(context).colorScheme.outlineVariant,
+                          ),
+                        ),
+                        FilledButton(
+                          onPressed: () => _addEmployee(context),
+                          style: FilledButton.styleFrom(
+                            backgroundColor: Theme.of(context)
+                                .colorScheme
+                                .surfaceContainer,
+                            foregroundColor: Theme.of(context)
+                                .colorScheme
+                                .onSurface,
+                            shape: ContinuousRectangleBorder(
+                              borderRadius: BorderRadius.circular(16),
+                            ),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 8,
+                            ),
+                          ),
+                          child: const Text('Add employee'),
+                        ),
+                        SizedBox(
+                          height: 16,
+                          child: VerticalDivider(
+                            width: 16,
+                            thickness: 1,
+                            color: Theme.of(context).colorScheme.outlineVariant,
+                          ),
+                        ),
+                        FilledButton(
+                          onPressed: () => _deleteEmployee(context),
+                          style: FilledButton.styleFrom(
+                            backgroundColor: Theme.of(context)
+                                .colorScheme
+                                .surfaceContainer,
+                            foregroundColor: Theme.of(context)
+                                .colorScheme
+                                .onSurface,
+                            shape: ContinuousRectangleBorder(
+                              borderRadius: BorderRadius.circular(16),
+                            ),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 8,
+                            ),
+                          ),
+                          child: const Text('Delete employee'),
+                        ),
+                      ],
+                    ),
+                  ),
                 ),
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
               ),
-              child: const Text('Add employee'),
-            ),
-            SizedBox(
-              height: 16,
-              child: VerticalDivider(
-                width: 16,
-                thickness: 1,
-                color: Theme.of(context).colorScheme.outlineVariant,
-              ),
-            ),
-            FilledButton(
-              onPressed: () => _massAddPoints(context),
-              style: FilledButton.styleFrom(
-                backgroundColor: Theme.of(context).colorScheme.surfaceContainer,
-                foregroundColor: Theme.of(context).colorScheme.onSurface,
-                shape: ContinuousRectangleBorder(
-                  borderRadius: BorderRadius.circular(16),
+              if (widget.showHistoryButton) ...[
+                const SizedBox(width: 16),
+                TextButton.icon(
+                  onPressed: widget.onOpenHistory,
+                  icon: const Icon(Icons.history),
+                  label: const Text('History'),
                 ),
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-              ),
-              child: const Text('Mass add points'),
-            ),
-            SizedBox(
-              height: 16,
-              child: VerticalDivider(
-                width: 16,
-                thickness: 1,
-                color: Theme.of(context).colorScheme.outlineVariant,
-              ),
-            ),
-            FilledButton(
-              onPressed: () => _deleteEmployee(context),
-              style: FilledButton.styleFrom(
-                backgroundColor: Theme.of(context).colorScheme.surfaceContainer,
-                foregroundColor: Theme.of(context).colorScheme.onSurface,
-                shape: ContinuousRectangleBorder(
-                  borderRadius: BorderRadius.circular(16),
-                ),
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-              ),
-              child: const Text('Delete employee'),
-            ),
-            const Spacer(),
-            TextButton.icon(
-              onPressed: () => _openHistory(context),
-              icon: const Icon(Icons.history),
-              label: const Text('History'),
-            ),
-          ],
+              ],
+            ],
+          ),
         ),
       ),
     );
@@ -636,6 +680,8 @@ class _MassAddPointsDialogState extends State<_MassAddPointsDialog> {
 
   final _formKey = GlobalKey<FormState>();
   final _horizontalScrollController = ScrollController();
+  final _managerController = TextEditingController();
+  final _descriptionController = TextEditingController();
   final Map<int, TextEditingController> _controllers = {};
   List<Employee> _employees = [];
   Object? _loadError;
@@ -722,8 +768,8 @@ class _MassAddPointsDialogState extends State<_MassAddPointsDialog> {
         if (employeeNames.isNotEmpty) {
           await historyDao.addEntry(
             actionType: 'Mass add points',
-            description: '',
-            actor: '',
+            description: _descriptionController.text.trim(),
+            actor: _managerController.text.trim(),
             employee: employeeNames.reversed.join('\n'),
             points: pointsAdded.reversed.join('\n'),
           );
@@ -807,91 +853,127 @@ class _MassAddPointsDialogState extends State<_MassAddPointsDialog> {
     );
   }
 
-  Widget _buildEmployeeColumns(BuildContext context) {
+  Widget _buildDetailsFields() {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            width: 180,
+            child: TextField(
+              controller: _managerController,
+              enabled: !_isSaving,
+              decoration: const InputDecoration(
+                labelText: 'Manager',
+                isDense: true,
+                border: OutlineInputBorder(),
+                floatingLabelBehavior: FloatingLabelBehavior.always,
+              ),
+            ),
+          ),
+          const SizedBox(width: 16),
+          Expanded(
+            child: TextField(
+              controller: _descriptionController,
+              enabled: !_isSaving,
+              decoration: const InputDecoration(
+                labelText: 'Description',
+                isDense: true,
+                border: OutlineInputBorder(),
+                floatingLabelBehavior: FloatingLabelBehavior.always,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildEmployeeColumns(BuildContext context, double availableHeight) {
+    const columnSpacing = 20.0;
+    const columnWidth = 200.0;
+    final rowsThatFit = (availableHeight / _employeeRowExtent)
+        .floor()
+        .clamp(1, _employees.length)
+        .toInt();
+    final columnCount = (_employees.length + rowsThatFit - 1) ~/ rowsThatFit;
+    final employeesPerColumn = rowsThatFit;
+    final contentWidth =
+        columnWidth * columnCount + columnSpacing * (columnCount - 1);
+    final columns = <Widget>[];
+
+    for (var column = 0; column < columnCount; column++) {
+      if (column > 0) {
+        columns.add(
+          Column(
+            children: [
+              SizedBox(
+                height: rowsThatFit * _employeeRowExtent,
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 8),
+                  child: VerticalDivider(
+                    width: columnSpacing,
+                    thickness: 1,
+                    color: Theme.of(context).colorScheme.outlineVariant,
+                  ),
+                ),
+              ),
+              Spacer(),
+            ],
+          ),
+        );
+      }
+
+      final columnStart = column * employeesPerColumn;
+      final remainingEmployees = _employees.length - columnStart;
+      final columnEmployeeCount = remainingEmployees < employeesPerColumn
+          ? remainingEmployees
+          : employeesPerColumn;
+      columns.add(
+        SizedBox(
+          width: columnWidth,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              for (var row = 0; row < columnEmployeeCount; row++)
+                _buildEmployeeRow(
+                  _employees[columnStart + row],
+                  columnStart + row,
+                ),
+              SizedBox(
+                height:
+                    (employeesPerColumn - columnEmployeeCount) *
+                    _employeeRowExtent,
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
     return FocusTraversalGroup(
       policy: OrderedTraversalPolicy(),
       child: Form(
         key: _formKey,
         child: Padding(
-          padding: const EdgeInsets.only(left: 16, right: 16),
-          child: LayoutBuilder(
-            builder: (context, constraints) {
-              const columnSpacing = 20.0;
-              const columnWidth = 200.0;
-              final availableHeight = constraints.maxHeight;
-              final rowsThatFit = availableHeight.isFinite
-                  ? (availableHeight / _employeeRowExtent)
-                        .floor()
-                        .clamp(1, _employees.length)
-                        .toInt()
-                  : _employees.length;
-              final columnCount =
-                  (_employees.length + rowsThatFit - 1) ~/ rowsThatFit;
-              final employeesPerColumn = rowsThatFit;
-              final contentWidth =
-                  columnWidth * columnCount + columnSpacing * (columnCount - 1);
-              final columns = <Widget>[];
-
-              for (var column = 0; column < columnCount; column++) {
-                if (column > 0) {
-                  columns.add(
-                    Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 8),
-                      child: VerticalDivider(
-                        width: columnSpacing,
-                        thickness: 1,
-                        color: Theme.of(context).colorScheme.outlineVariant,
-                      ),
-                    ),
-                  );
-                }
-
-                final columnStart = column * employeesPerColumn;
-                final remainingEmployees = _employees.length - columnStart;
-                final columnEmployeeCount =
-                    remainingEmployees < employeesPerColumn
-                    ? remainingEmployees
-                    : employeesPerColumn;
-                columns.add(
-                  SizedBox(
-                    width: columnWidth,
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        for (var row = 0; row < columnEmployeeCount; row++)
-                          _buildEmployeeRow(
-                            _employees[columnStart + row],
-                            columnStart + row,
-                          ),
-                        SizedBox(
-                          height:
-                              (employeesPerColumn - columnEmployeeCount) *
-                              _employeeRowExtent,
-                        ),
-                      ],
-                    ),
-                  ),
-                );
-              }
-
-              return Scrollbar(
-                controller: _horizontalScrollController,
-                thumbVisibility: true,
-                child: SingleChildScrollView(
-                  controller: _horizontalScrollController,
-                  scrollDirection: Axis.horizontal,
-                  child: SizedBox(
-                    width: contentWidth,
-                    child: IntrinsicHeight(
-                      child: Row(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: columns,
-                      ),
-                    ),
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          child: Scrollbar(
+            controller: _horizontalScrollController,
+            thumbVisibility: true,
+            child: SingleChildScrollView(
+              controller: _horizontalScrollController,
+              scrollDirection: Axis.horizontal,
+              child: SizedBox(
+                width: contentWidth,
+                child: IntrinsicHeight(
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: columns,
                   ),
                 ),
-              );
-            },
+              ),
+            ),
           ),
         ),
       ),
@@ -900,36 +982,88 @@ class _MassAddPointsDialogState extends State<_MassAddPointsDialog> {
 
   @override
   Widget build(BuildContext context) {
-    final dialogHeight = (MediaQuery.sizeOf(context).height - 240).clamp(
-      160.0,
-      640.0,
+    final screenSize = MediaQuery.sizeOf(context);
+    final dialogHeight = (screenSize.height - 240).clamp(160.0, 640.0);
+    const columnSpacing = 20.0;
+    const columnWidth = 212.0;
+    const horizontalPadding = 32.0;
+    const detailsMinimumWidth = 720.0;
+    var employeeGridHeight = (dialogHeight - 56).clamp(
+      _employeeRowExtent,
+      dialogHeight,
     );
+    var rowsThatFit = _employees.isEmpty
+        ? 1
+        : (employeeGridHeight / _employeeRowExtent)
+              .floor()
+              .clamp(1, _employees.length)
+              .toInt();
+    var columnCount = _employees.isEmpty
+        ? 0
+        : (_employees.length + rowsThatFit - 1) ~/ rowsThatFit;
+    var employeeContentWidth = columnCount == 0
+        ? 0.0
+        : columnWidth * columnCount + columnSpacing * (columnCount - 1);
+    final maxDialogWidth = (screenSize.width - 64).clamp(320.0, 1900.0);
+
+    if (employeeContentWidth + horizontalPadding > maxDialogWidth) {
+      employeeGridHeight = (employeeGridHeight - 12).clamp(
+        _employeeRowExtent,
+        dialogHeight,
+      );
+      rowsThatFit = _employees.isEmpty
+          ? 1
+          : (employeeGridHeight / _employeeRowExtent)
+                .floor()
+                .clamp(1, _employees.length)
+                .toInt();
+      columnCount = _employees.isEmpty
+          ? 0
+          : (_employees.length + rowsThatFit - 1) ~/ rowsThatFit;
+      employeeContentWidth = columnCount == 0
+          ? 0.0
+          : columnWidth * columnCount + columnSpacing * (columnCount - 1);
+    }
+
+    final dialogWidth = ([
+      detailsMinimumWidth,
+      employeeContentWidth + horizontalPadding,
+    ].reduce((a, b) => a > b ? a : b)).clamp(320.0, maxDialogWidth);
 
     return AlertDialog(
-      constraints: const BoxConstraints(maxWidth: 900),
+      constraints: BoxConstraints(maxWidth: dialogWidth),
       title: const Text('Mass add points'),
+      contentPadding: EdgeInsets.fromLTRB(24, 20, 24, 16),
       content: SizedBox(
-        width: 820,
+        width: dialogWidth,
         height: dialogHeight,
-        child: _isLoading
-            ? const Center(child: CircularProgressIndicator())
-            : _loadError != null
-            ? Center(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text('Could not load employees: $_loadError'),
-                    const SizedBox(height: 8),
-                    FilledButton(
-                      onPressed: _loadEmployees,
-                      child: const Text('Retry'),
-                    ),
-                  ],
-                ),
-              )
-            : _employees.isEmpty
-            ? const Center(child: Text('No employees to add points to.'))
-            : _buildEmployeeColumns(context),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Expanded(
+              child: _isLoading
+                  ? const Center(child: CircularProgressIndicator())
+                  : _loadError != null
+                  ? Center(
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text('Could not load employees: $_loadError'),
+                          const SizedBox(height: 8),
+                          FilledButton(
+                            onPressed: _loadEmployees,
+                            child: const Text('Retry'),
+                          ),
+                        ],
+                      ),
+                    )
+                  : _employees.isEmpty
+                  ? const Center(child: Text('No employees to add points to.'))
+                  : _buildEmployeeColumns(context, employeeGridHeight),
+            ),
+            _buildDetailsFields(),
+          ],
+        ),
       ),
       actions: [
         TextButton(
@@ -944,6 +1078,8 @@ class _MassAddPointsDialogState extends State<_MassAddPointsDialog> {
   @override
   void dispose() {
     _horizontalScrollController.dispose();
+    _managerController.dispose();
+    _descriptionController.dispose();
     for (final controller in _controllers.values) {
       controller.dispose();
     }
