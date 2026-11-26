@@ -130,13 +130,21 @@ class SlingButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return TextButton.icon(
+    return FilledButton(
       onPressed: () => loginToSling(context),
-      icon: Icon(
-        _authorizationToken == null ? Icons.login : Icons.check_circle,
+      style: FilledButton.styleFrom(
+        backgroundColor: Theme.of(context).colorScheme.surfaceContainer,
+        foregroundColor: Theme.of(context).colorScheme.onSurface,
+        shape: ContinuousRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+        ),
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
       ),
-      label: Text(
-        _authorizationToken == null ? 'Log in to Sling' : 'Sling connected',
+      child: Text(
+        'Sling integration',
+        semanticsLabel: _authorizationToken == null
+            ? 'Sling integration'
+            : 'Sling integration, connected',
       ),
     );
   }

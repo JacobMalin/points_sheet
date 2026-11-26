@@ -3,6 +3,28 @@ import 'package:material_ui/material_ui.dart';
 import 'package:points_sheet/database.dart';
 import 'package:provider/provider.dart';
 
+Color? pointsHistoryColor(
+  BuildContext context,
+  String actionType, {
+  String? points,
+}) {
+  final colors = Theme.of(context).colorScheme;
+
+  // For Points adjusted, check if the value is negative
+  if (actionType == 'Points adjusted') {
+    if (points != null && points.startsWith('-')) {
+      return colors.error;
+    }
+    return colors.primary;
+  }
+
+  return switch (actionType) {
+    'Mass add points' || 'Points added' => colors.primary,
+    'Reward redeemed' || 'Writeup' || 'Points removed' => colors.error,
+    _ => null,
+  };
+}
+
 Color _managerColor(String manager) {
   var hash = 0x811c9dc3;
   for (final codeUnit in manager.trim().toLowerCase().codeUnits) {
@@ -114,6 +136,11 @@ class _HistoryMenuState extends State<HistoryMenu> {
                   final employee = entry.employee?.trim() ?? '';
                   final description = entry.description.trim();
                   final detailStyle = Theme.of(context).textTheme.bodyMedium;
+                  final pointsColor = pointsHistoryColor(
+                    context,
+                    entry.actionType,
+                    points: entry.points,
+                  );
                   return ListTile(
                     dense: true,
                     title: Row(
@@ -184,7 +211,12 @@ class _HistoryMenuState extends State<HistoryMenu> {
                               Text(
                                 entry.points!,
                                 textAlign: TextAlign.right,
-                                style: detailStyle,
+                                style: pointsColor == null
+                                    ? detailStyle
+                                    : detailStyle?.copyWith(
+                                        color: pointsColor,
+                                        fontWeight: FontWeight.w600,
+                                      ),
                               ),
                             ],
                           ],

@@ -1,7 +1,10 @@
+import 'package:drift/drift.dart' show Value;
+import 'package:flutter/foundation.dart' show listEquals;
 import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:points_sheet/database.dart';
+// import 'package:points_sheet/sling.dart';
 import 'package:provider/provider.dart';
 
 class _EmployeeName {
@@ -20,10 +23,12 @@ class _EmployeesToAdd {
 class ActionsBar extends StatefulWidget {
   const ActionsBar({
     super.key,
+    required this.authorizationToken,
     required this.showHistoryButton,
     this.onOpenHistory,
   });
 
+  final String? authorizationToken;
   final bool showHistoryButton;
   final VoidCallback? onOpenHistory;
 
@@ -283,6 +288,13 @@ class _ActionsBarState extends State<ActionsBar> {
     await showDialog<void>(
       context: context,
       builder: (context) => const _MassAddPointsDialog(),
+    );
+  }
+
+  Future<void> _manageRewardsAndWriteups(BuildContext context) async {
+    await showDialog<void>(
+      context: context,
+      builder: (context) => const _RewardWriteupManagerDialog(),
     );
   }
 
@@ -558,6 +570,58 @@ class _ActionsBarState extends State<ActionsBar> {
 
   @override
   Widget build(BuildContext context) {
+    final buttons = [
+      FilledButton(
+        onPressed: () => _massAddPoints(context),
+        style: FilledButton.styleFrom(
+          backgroundColor: Theme.of(context).colorScheme.surfaceContainer,
+          foregroundColor: Theme.of(context).colorScheme.onSurface,
+          shape: ContinuousRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+        ),
+        child: const Text('Mass add points'),
+      ),
+      FilledButton(
+        onPressed: () => _addEmployee(context),
+        style: FilledButton.styleFrom(
+          backgroundColor: Theme.of(context).colorScheme.surfaceContainer,
+          foregroundColor: Theme.of(context).colorScheme.onSurface,
+          shape: ContinuousRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+        ),
+        child: const Text('Add employee'),
+      ),
+      FilledButton(
+        onPressed: () => _deleteEmployee(context),
+        style: FilledButton.styleFrom(
+          backgroundColor: Theme.of(context).colorScheme.surfaceContainer,
+          foregroundColor: Theme.of(context).colorScheme.onSurface,
+          shape: ContinuousRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+        ),
+        child: const Text('Delete employee'),
+      ),
+      FilledButton(
+        onPressed: () => _manageRewardsAndWriteups(context),
+        style: FilledButton.styleFrom(
+          backgroundColor: Theme.of(context).colorScheme.surfaceContainer,
+          foregroundColor: Theme.of(context).colorScheme.onSurface,
+          shape: ContinuousRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+        ),
+        child: const Text('Edit rewards & writeups'),
+      ),
+      // SlingButton(authorizationToken: widget.authorizationToken),
+    ];
+
     return Container(
       color: Theme.of(context).colorScheme.surfaceContainer,
       child: LayoutBuilder(
@@ -574,79 +638,24 @@ class _ActionsBarState extends State<ActionsBar> {
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        FilledButton(
-                          onPressed: () => _massAddPoints(context),
-                          style: FilledButton.styleFrom(
-                            backgroundColor: Theme.of(context)
-                                .colorScheme
-                                .surfaceContainer,
-                            foregroundColor: Theme.of(context)
-                                .colorScheme
-                                .onSurface,
-                            shape: ContinuousRectangleBorder(
-                              borderRadius: BorderRadius.circular(16),
+                        for (
+                          var index = 0;
+                          index < buttons.length;
+                          index++
+                        ) ...[
+                          if (index > 0)
+                            SizedBox(
+                              height: 16,
+                              child: VerticalDivider(
+                                width: 16,
+                                thickness: 1,
+                                color: Theme.of(context)
+                                    .colorScheme
+                                    .outlineVariant,
+                              ),
                             ),
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 8,
-                              vertical: 8,
-                            ),
-                          ),
-                          child: const Text('Mass add points'),
-                        ),
-                        SizedBox(
-                          height: 16,
-                          child: VerticalDivider(
-                            width: 16,
-                            thickness: 1,
-                            color: Theme.of(context).colorScheme.outlineVariant,
-                          ),
-                        ),
-                        FilledButton(
-                          onPressed: () => _addEmployee(context),
-                          style: FilledButton.styleFrom(
-                            backgroundColor: Theme.of(context)
-                                .colorScheme
-                                .surfaceContainer,
-                            foregroundColor: Theme.of(context)
-                                .colorScheme
-                                .onSurface,
-                            shape: ContinuousRectangleBorder(
-                              borderRadius: BorderRadius.circular(16),
-                            ),
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 8,
-                              vertical: 8,
-                            ),
-                          ),
-                          child: const Text('Add employee'),
-                        ),
-                        SizedBox(
-                          height: 16,
-                          child: VerticalDivider(
-                            width: 16,
-                            thickness: 1,
-                            color: Theme.of(context).colorScheme.outlineVariant,
-                          ),
-                        ),
-                        FilledButton(
-                          onPressed: () => _deleteEmployee(context),
-                          style: FilledButton.styleFrom(
-                            backgroundColor: Theme.of(context)
-                                .colorScheme
-                                .surfaceContainer,
-                            foregroundColor: Theme.of(context)
-                                .colorScheme
-                                .onSurface,
-                            shape: ContinuousRectangleBorder(
-                              borderRadius: BorderRadius.circular(16),
-                            ),
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 8,
-                              vertical: 8,
-                            ),
-                          ),
-                          child: const Text('Delete employee'),
-                        ),
+                          buttons[index],
+                        ],
                       ],
                     ),
                   ),
@@ -664,6 +673,579 @@ class _ActionsBarState extends State<ActionsBar> {
           ),
         ),
       ),
+    );
+  }
+}
+
+class _RewardWriteupValues {
+  const _RewardWriteupValues(this.name, this.points);
+
+  final String name;
+  final int points;
+}
+
+class _RewardWriteupManagerDialog extends StatefulWidget {
+  const _RewardWriteupManagerDialog();
+
+  @override
+  State<_RewardWriteupManagerDialog> createState() =>
+      _RewardWriteupManagerDialogState();
+}
+
+class _RewardWriteupManagerDialogState
+    extends State<_RewardWriteupManagerDialog> {
+  late final _rewardsStream = context.read<AppDatabase>().watchRewards();
+  late final _writeupsStream = context.read<AppDatabase>().watchWriteups();
+  List<int>? _pendingRewardOrder;
+  List<int>? _pendingWriteupOrder;
+  bool _isReordering = false;
+  String? _reorderError;
+
+  List<T> _displayOrder<T extends Object>(
+    List<T> items,
+    List<int>? pending,
+    int Function(T) idOf,
+    VoidCallback onConfirmed,
+  ) {
+    if (pending == null) return items;
+    final byId = {for (final item in items) idOf(item): item};
+    final pendingIds = pending.toSet();
+    if (listEquals(
+      items.map(idOf).where(pendingIds.contains).toList(),
+      pending.where(byId.containsKey).toList(),
+    )) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) onConfirmed();
+      });
+    }
+    return [
+      for (final id in pending) ?byId[id],
+      for (final item in items)
+        if (!pendingIds.contains(idOf(item))) item,
+    ];
+  }
+
+  Future<void> _reorder(
+    List<int> ids,
+    int oldIndex,
+    int newIndex,
+    Future<void> Function(List<int>) save,
+    void Function(List<int>?) setPending,
+  ) async {
+    if (_isReordering || oldIndex == newIndex) return;
+    ids.insert(newIndex, ids.removeAt(oldIndex));
+    setState(() {
+      setPending(ids);
+      _isReordering = true;
+      _reorderError = null;
+    });
+    try {
+      await save(ids);
+    } catch (error) {
+      if (mounted) {
+        setState(() {
+          setPending(null);
+          _reorderError = 'Could not reorder: $error';
+        });
+      }
+    } finally {
+      if (mounted) setState(() => _isReordering = false);
+    }
+  }
+
+  Future<_RewardWriteupValues?> _editEntry({
+    required String title,
+    required String nameLabel,
+    required String pointsLabel,
+    String initialName = '',
+    int? initialPoints,
+  }) => showDialog<_RewardWriteupValues>(
+    context: context,
+    builder: (context) => _RewardWriteupEditorDialog(
+      title: title,
+      nameLabel: nameLabel,
+      pointsLabel: pointsLabel,
+      initialName: initialName,
+      initialPoints: initialPoints,
+    ),
+  );
+
+  Future<void> _editReward([RewardTableData? reward]) async {
+    final values = await _editEntry(
+      title: reward == null ? 'Add reward' : 'Edit reward',
+      nameLabel: 'Reward name',
+      pointsLabel: 'Points required',
+      initialName: reward?.name ?? '',
+      initialPoints: reward?.pointsRequired,
+    );
+    if (values == null || !mounted) return;
+
+    final database = context.read<AppDatabase>();
+    try {
+      if (reward == null) {
+        await database
+            .into(database.rewardTable)
+            .insert(
+              RewardTableCompanion.insert(
+                name: values.name,
+                pointsRequired: values.points,
+              ),
+            );
+      } else {
+        final updated =
+            await (database.update(
+              database.rewardTable,
+            )..where((row) => row.id.equals(reward.id))).write(
+              RewardTableCompanion(
+                name: Value(values.name),
+                pointsRequired: Value(values.points),
+              ),
+            );
+        if (updated == 0) throw StateError('The reward no longer exists.');
+      }
+    } catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Could not save reward: $error')));
+    }
+  }
+
+  Future<void> _editWriteup([WriteupTableData? writeup]) async {
+    final values = await _editEntry(
+      title: writeup == null ? 'Add writeup' : 'Edit writeup',
+      nameLabel: 'Writeup title',
+      pointsLabel: 'Points removed',
+      initialName: writeup?.title ?? '',
+      initialPoints: writeup?.points,
+    );
+    if (values == null || !mounted) return;
+
+    final database = context.read<AppDatabase>();
+    try {
+      if (writeup == null) {
+        await database
+            .into(database.writeupTable)
+            .insert(
+              WriteupTableCompanion.insert(
+                title: values.name,
+                points: values.points,
+              ),
+            );
+      } else {
+        final updated =
+            await (database.update(
+              database.writeupTable,
+            )..where((row) => row.id.equals(writeup.id))).write(
+              WriteupTableCompanion(
+                title: Value(values.name),
+                points: Value(values.points),
+              ),
+            );
+        if (updated == 0) throw StateError('The writeup no longer exists.');
+      }
+    } catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Could not save writeup: $error')));
+    }
+  }
+
+  Future<bool> _confirmDelete(String title, String name) async {
+    return await showDialog<bool>(
+          context: context,
+          builder: (dialogContext) => AlertDialog(
+            title: Text('Delete $title?'),
+            content: Text('Delete "$name"? This cannot be undone.'),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(dialogContext).pop(false),
+                child: const Text('Cancel'),
+              ),
+              FilledButton(
+                onPressed: () => Navigator.of(dialogContext).pop(true),
+                child: const Text('Delete'),
+              ),
+            ],
+          ),
+        ) ??
+        false;
+  }
+
+  Future<void> _deleteReward(RewardTableData reward) async {
+    if (!await _confirmDelete('reward', reward.name) || !mounted) return;
+    final database = context.read<AppDatabase>();
+    try {
+      await (database.delete(
+        database.rewardTable,
+      )..where((row) => row.id.equals(reward.id))).go();
+    } catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Could not delete reward: $error')),
+      );
+    }
+  }
+
+  Future<void> _deleteWriteup(WriteupTableData writeup) async {
+    if (!await _confirmDelete('writeup', writeup.title) || !mounted) return;
+    final database = context.read<AppDatabase>();
+    try {
+      await (database.delete(
+        database.writeupTable,
+      )..where((row) => row.id.equals(writeup.id))).go();
+    } catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Could not delete writeup: $error')),
+      );
+    }
+  }
+
+  Widget _buildRewards() {
+    return StreamBuilder<List<RewardTableData>>(
+      stream: _rewardsStream,
+      builder: (context, snapshot) {
+        if (snapshot.hasError) {
+          return Center(
+            child: Text('Could not load rewards: ${snapshot.error}'),
+          );
+        }
+        if (!snapshot.hasData) {
+          return const Center(child: CircularProgressIndicator());
+        }
+        final pending = _pendingRewardOrder;
+        final rewards = _displayOrder(
+          snapshot.data!,
+          pending,
+          (RewardTableData reward) => reward.id,
+          () {
+            if (identical(_pendingRewardOrder, pending)) {
+              setState(() => _pendingRewardOrder = null);
+            }
+          },
+        );
+        return Column(
+          children: [
+            Expanded(
+              child: rewards.isEmpty
+                  ? const Center(child: Text('No rewards yet.'))
+                  : ReorderableListView.builder(
+                      itemCount: rewards.length,
+                      buildDefaultDragHandles: false,
+                      onReorderItem: (oldIndex, newIndex) => _reorder(
+                        rewards.map((reward) => reward.id).toList(),
+                        oldIndex,
+                        newIndex,
+                        context.read<AppDatabase>().reorderRewards,
+                        (order) => _pendingRewardOrder = order,
+                      ),
+                      itemBuilder: (context, index) {
+                        final reward = rewards[index];
+                        return ListTile(
+                          key: ValueKey('reward-${reward.id}'),
+                          title: Text(reward.name),
+                          subtitle: Text(
+                            '${NumberFormat().format(reward.pointsRequired)} points required',
+                          ),
+                          trailing: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              IconButton(
+                                onPressed: _isReordering
+                                    ? null
+                                    : () => _editReward(reward),
+                                icon: const Icon(
+                                  Icons.edit_outlined,
+                                  semanticLabel: 'Edit reward',
+                                ),
+                              ),
+                              IconButton(
+                                onPressed: _isReordering
+                                    ? null
+                                    : () => _deleteReward(reward),
+                                icon: const Icon(
+                                  Icons.delete_outline,
+                                  semanticLabel: 'Delete reward',
+                                ),
+                              ),
+                              ReorderableDragStartListener(
+                                index: index,
+                                enabled: !_isReordering,
+                                child: const SizedBox(
+                                  width: 40,
+                                  height: 48,
+                                  child: Icon(
+                                    Icons.drag_handle,
+                                    semanticLabel: 'Reorder reward',
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        );
+                      },
+                    ),
+            ),
+            Align(
+              alignment: Alignment.centerRight,
+              child: FilledButton.icon(
+                onPressed: () => _editReward(),
+                icon: const Icon(Icons.add),
+                label: const Text('Add reward'),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Widget _buildWriteups() {
+    return StreamBuilder<List<WriteupTableData>>(
+      stream: _writeupsStream,
+      builder: (context, snapshot) {
+        if (snapshot.hasError) {
+          return Center(
+            child: Text('Could not load writeups: ${snapshot.error}'),
+          );
+        }
+        if (!snapshot.hasData) {
+          return const Center(child: CircularProgressIndicator());
+        }
+        final pending = _pendingWriteupOrder;
+        final writeups = _displayOrder(
+          snapshot.data!,
+          pending,
+          (WriteupTableData writeup) => writeup.id,
+          () {
+            if (identical(_pendingWriteupOrder, pending)) {
+              setState(() => _pendingWriteupOrder = null);
+            }
+          },
+        );
+        return Column(
+          children: [
+            Expanded(
+              child: writeups.isEmpty
+                  ? const Center(child: Text('No writeups yet.'))
+                  : ReorderableListView.builder(
+                      itemCount: writeups.length,
+                      buildDefaultDragHandles: false,
+                      onReorderItem: (oldIndex, newIndex) => _reorder(
+                        writeups.map((writeup) => writeup.id).toList(),
+                        oldIndex,
+                        newIndex,
+                        context.read<AppDatabase>().reorderWriteups,
+                        (order) => _pendingWriteupOrder = order,
+                      ),
+                      itemBuilder: (context, index) {
+                        final writeup = writeups[index];
+                        return ListTile(
+                          key: ValueKey('writeup-${writeup.id}'),
+                          title: Text(writeup.title),
+                          subtitle: Text(
+                            '${NumberFormat().format(writeup.points)} points removed',
+                          ),
+                          trailing: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              IconButton(
+                                onPressed: _isReordering
+                                    ? null
+                                    : () => _editWriteup(writeup),
+                                icon: const Icon(
+                                  Icons.edit_outlined,
+                                  semanticLabel: 'Edit writeup',
+                                ),
+                              ),
+                              IconButton(
+                                onPressed: _isReordering
+                                    ? null
+                                    : () => _deleteWriteup(writeup),
+                                icon: const Icon(
+                                  Icons.delete_outline,
+                                  semanticLabel: 'Delete writeup',
+                                ),
+                              ),
+                              ReorderableDragStartListener(
+                                index: index,
+                                enabled: !_isReordering,
+                                child: const SizedBox(
+                                  width: 40,
+                                  height: 48,
+                                  child: Icon(
+                                    Icons.drag_handle,
+                                    semanticLabel: 'Reorder writeup',
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        );
+                      },
+                    ),
+            ),
+            Align(
+              alignment: Alignment.centerRight,
+              child: FilledButton.icon(
+                onPressed: () => _editWriteup(),
+                icon: const Icon(Icons.add),
+                label: const Text('Add writeup'),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return DefaultTabController(
+      length: 2,
+      child: AlertDialog(
+        title: const Text('Edit rewards & writeups'),
+        content: SizedBox(
+          width: 480,
+          height: 420,
+          child: Column(
+            children: [
+              const TabBar(
+                tabs: [
+                  Tab(text: 'Rewards'),
+                  Tab(text: 'Writeups'),
+                ],
+              ),
+              const SizedBox(height: 8),
+              Expanded(
+                child: TabBarView(
+                  children: [_buildRewards(), _buildWriteups()],
+                ),
+              ),
+              if (_reorderError != null)
+                Text(
+                  _reorderError!,
+                  style: TextStyle(color: Theme.of(context).colorScheme.error),
+                ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: _isReordering ? null : () => Navigator.of(context).pop(),
+            child: const Text('Done'),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _RewardWriteupEditorDialog extends StatefulWidget {
+  const _RewardWriteupEditorDialog({
+    required this.title,
+    required this.nameLabel,
+    required this.pointsLabel,
+    required this.initialName,
+    required this.initialPoints,
+  });
+
+  final String title;
+  final String nameLabel;
+  final String pointsLabel;
+  final String initialName;
+  final int? initialPoints;
+
+  @override
+  State<_RewardWriteupEditorDialog> createState() =>
+      _RewardWriteupEditorDialogState();
+}
+
+class _RewardWriteupEditorDialogState
+    extends State<_RewardWriteupEditorDialog> {
+  final _formKey = GlobalKey<FormState>();
+  late final TextEditingController _nameController;
+  late final TextEditingController _pointsController;
+
+  @override
+  void initState() {
+    super.initState();
+    _nameController = TextEditingController(text: widget.initialName);
+    _pointsController = TextEditingController(
+      text: widget.initialPoints?.toString() ?? '',
+    );
+  }
+
+  @override
+  void dispose() {
+    _nameController.dispose();
+    _pointsController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: Text(widget.title),
+      content: SizedBox(
+        width: 360,
+        child: Form(
+          key: _formKey,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextFormField(
+                controller: _nameController,
+                autofocus: true,
+                textCapitalization: TextCapitalization.sentences,
+                decoration: InputDecoration(
+                  labelText: widget.nameLabel,
+                  border: const OutlineInputBorder(),
+                ),
+                validator: (value) => value == null || value.trim().isEmpty
+                    ? 'Enter a name'
+                    : null,
+              ),
+              const SizedBox(height: 16),
+              TextFormField(
+                controller: _pointsController,
+                keyboardType: TextInputType.number,
+                inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                decoration: InputDecoration(
+                  labelText: widget.pointsLabel,
+                  border: const OutlineInputBorder(),
+                ),
+                validator: (value) {
+                  final points = int.tryParse(value ?? '');
+                  return points == null || points <= 0
+                      ? 'Enter a number greater than zero'
+                      : null;
+                },
+              ),
+            ],
+          ),
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: const Text('Cancel'),
+        ),
+        FilledButton(
+          onPressed: () {
+            if (!_formKey.currentState!.validate()) return;
+            Navigator.of(context).pop(
+              _RewardWriteupValues(
+                _nameController.text.trim(),
+                int.parse(_pointsController.text),
+              ),
+            );
+          },
+          child: Text(widget.initialPoints == null ? 'Add' : 'Save'),
+        ),
+      ],
     );
   }
 }
