@@ -23,12 +23,15 @@ jobs:
 
       - name: Bump version if same as latest release
         id: get-version
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           CURRENT_VERSION=$(yq '.version' pubspec.yaml)
           echo "Current pubspec version: $CURRENT_VERSION"
 
           # Get latest release tag from GitHub API (strip a leading 'v' if present).
-          LATEST_TAG=$(curl -s "https://api.github.com/repos/${GITHUB_REPOSITORY}/releases" | jq -r '[.[].tag_name][0] // empty')
+          RELEASES=$(gh api "repos/${GITHUB_REPOSITORY}/releases?per_page=1")
+          LATEST_TAG=$(jq -r 'if type != "array" then error("Expected a releases array") elif length == 0 then "" elif (.[0].tag_name | type) == "string" and .[0].tag_name != "" then .[0].tag_name else error("Release is missing a tag_name") end' <<< "$RELEASES")
           LATEST_TAG=${LATEST_TAG#v}
           echo "Latest release tag: ${LATEST_TAG:-<none>}"
 
