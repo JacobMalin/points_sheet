@@ -1,33 +1,16 @@
-import 'package:intl/intl.dart';
+import 'dart:math' as math;
+
+import 'package:flutter/rendering.dart';
+import 'package:flutter/services.dart';
+import 'package:intl/intl.dart' show DateFormat, NumberFormat;
 import 'package:material_ui/material_ui.dart';
 import 'package:points_sheet/database.dart';
 import 'package:points_sheet/history_menu.dart';
 import 'package:provider/provider.dart';
 
-class Reward {
-  const Reward(this.name, this.pointsRequired);
-
-  final String name;
-  final int pointsRequired;
-}
-
-class Writeup {
-  const Writeup(this.title, this.points);
-
-  final String title;
-  final int points;
-}
-
 class PointsGrid extends StatefulWidget {
-  const PointsGrid({
-    super.key,
-    required this.rewards,
-    required this.writeups,
-    required this.useDetailsPanel,
-  });
+  const PointsGrid({super.key, required this.useDetailsPanel});
 
-  final List<Reward> rewards;
-  final List<Writeup> writeups;
   final bool useDetailsPanel;
 
   @override
@@ -54,6 +37,7 @@ class _PointsGridState extends State<PointsGrid> {
         builder: (context, setDialogState) {
           return AlertDialog(
             titlePadding: EdgeInsets.zero,
+            contentPadding: EdgeInsets.fromLTRB(24, 0, 24, 24),
             title: SizedBox(
               width: double.infinity,
               child: Stack(
@@ -72,8 +56,9 @@ class _PointsGridState extends State<PointsGrid> {
                     ),
                   ),
                   Padding(
-                    padding: const EdgeInsets.fromLTRB(48, 24, 48, 0),
-                    child: Center(
+                    padding: const EdgeInsets.fromLTRB(48, 24, 48, 16),
+                    child: SizedBox(
+                      width: double.infinity,
                       child: Column(
                         mainAxisSize: MainAxisSize.min,
                         children: [
@@ -84,10 +69,10 @@ class _PointsGridState extends State<PointsGrid> {
                           const SizedBox(height: 8),
                           Text(
                             currentEmployee.formattedPoints,
+                            textAlign: TextAlign.center,
                             style: Theme.of(dialogContext)
                                 .textTheme
                                 .headlineSmall,
-                            textAlign: TextAlign.center,
                           ),
                         ],
                       ),
@@ -101,20 +86,46 @@ class _PointsGridState extends State<PointsGrid> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
+                  Center(
+                    child: FilledButton.icon(
+                      style: FilledButton.styleFrom(
+                        backgroundColor: Theme.of(dialogContext)
+                            .colorScheme
+                            .secondaryContainer,
+                        foregroundColor: Theme.of(dialogContext)
+                            .colorScheme
+                            .onSecondaryContainer,
+                      ),
+                      onPressed: () async {
+                        final updated = await showDialog<Employee>(
+                          context: dialogContext,
+                          barrierDismissible: false,
+                          builder: (_) =>
+                              _AdjustPointsDialog(employee: currentEmployee),
+                        );
+                        if (dialogContext.mounted && updated != null) {
+                          if (currentEmployee.data.id == updated.data.id) {
+                            setDialogState(() => currentEmployee = updated);
+                          }
+                        }
+                      },
+                      icon: const Icon(Icons.add),
+                      label: const Text('Add Points'),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
                   _EmployeeRewards(
                     employee: currentEmployee,
-                    rewards: widget.rewards,
                     onRedeemed: (employee) =>
                         setDialogState(() => currentEmployee = employee),
                   ),
                   const SizedBox(height: 16),
                   _EmployeeWriteups(
                     employee: currentEmployee,
-                    writeups: widget.writeups,
                     onWritten: (employee) =>
                         setDialogState(() => currentEmployee = employee),
                   ),
-                  if (MediaQuery.sizeOf(dialogContext).height >= 488)
+                  if (MediaQuery.sizeOf(dialogContext).height >= 524)
                     Expanded(
                       child: PointCard.buildEmployeeHistory(
                         dialogContext,
@@ -130,6 +141,224 @@ class _PointsGridState extends State<PointsGrid> {
       ),
     );
     if (mounted) _dialogEmployeeId = null;
+  }
+
+  Future<void> _showSearchAndAdjustDialog(
+    BuildContext context,
+    List<Employee> employees,
+  ) async {
+    final searchController = TextEditingController();
+    final amountController = TextEditingController();
+    final managerController = TextEditingController();
+    final descriptionController = TextEditingController();
+    final formKey = GlobalKey<FormState>();
+    Employee? selectedEmployee;
+    bool isSaving = false;
+
+    await showDialog<void>(
+      context: context,
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (context, setDialogState) {
+          final filteredEmployees = searchController.text.isEmpty
+              ? employees
+              : employees
+                    .where(
+                      (e) => e.name.toLowerCase().contains(
+                        searchController.text.toLowerCase(),
+                      ),
+                    )
+                    .toList();
+
+          return AlertDialog(
+            title: const Text('Add Points'),
+            content: SizedBox(
+              width: 400,
+              child: SingleChildScrollView(
+                child: Form(
+                  key: formKey,
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      if (selectedEmployee == null) ...[
+                        TextField(
+                          controller: searchController,
+                          decoration: const InputDecoration(
+                            labelText: 'Search employee',
+                            hintText: 'Type name...',
+                            prefixIcon: Icon(Icons.search),
+                          ),
+                          onChanged: (_) => setDialogState(() {}),
+                        ),
+                        const SizedBox(height: 16),
+                        if (filteredEmployees.isEmpty)
+                          const Text('No employees found')
+                        else
+                          ConstrainedBox(
+                            constraints: const BoxConstraints(maxHeight: 200),
+                            child: ListView.builder(
+                              shrinkWrap: true,
+                              itemCount: filteredEmployees.length,
+                              itemBuilder: (context, index) {
+                                final employee = filteredEmployees[index];
+                                return ListTile(
+                                  dense: true,
+                                  title: Text(employee.name),
+                                  subtitle: Text(employee.formattedPoints),
+                                  selected:
+                                      selectedEmployee?.data.id ==
+                                      employee.data.id,
+                                  onTap: () => setDialogState(
+                                    () => selectedEmployee = employee,
+                                  ),
+                                );
+                              },
+                            ),
+                          ),
+                      ],
+                      if (selectedEmployee != null) ...[
+                        const SizedBox(height: 16),
+                        MouseRegion(
+                          cursor: SystemMouseCursors.click,
+                          child: GestureDetector(
+                            onTap: () => setDialogState(() {
+                              selectedEmployee = null;
+                              searchController.clear();
+                            }),
+                            child: _HoverableEmployeeCard(
+                              employee: selectedEmployee!,
+                              onTap: () => setDialogState(() {
+                                selectedEmployee = null;
+                                searchController.clear();
+                              }),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                        TextFormField(
+                          controller: amountController,
+                          enabled: !isSaving,
+                          keyboardType: TextInputType.number,
+                          inputFormatters: [
+                            FilteringTextInputFormatter.allow(
+                              RegExp(r'[0-9\-]'),
+                            ),
+                            LengthLimitingTextInputFormatter(19),
+                          ],
+                          decoration: const InputDecoration(
+                            labelText: 'Points',
+                          ),
+                          validator: (value) {
+                            final amount = int.tryParse(value ?? '');
+                            return amount == null
+                                ? 'Enter a number (can be negative)'
+                                : null;
+                          },
+                        ),
+                        const SizedBox(height: 8),
+                        TextField(
+                          controller: managerController,
+                          enabled: !isSaving,
+                          decoration: const InputDecoration(
+                            labelText: 'Manager',
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        TextField(
+                          controller: descriptionController,
+                          enabled: !isSaving,
+                          decoration: const InputDecoration(
+                            labelText: 'Description',
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: isSaving ? null : () => Navigator.of(context).pop(),
+                child: const Text('Cancel'),
+              ),
+              FilledButton(
+                onPressed: selectedEmployee == null || isSaving
+                    ? null
+                    : () async {
+                        if (!formKey.currentState!.validate()) return;
+                        setDialogState(() => isSaving = true);
+
+                        try {
+                          final database = context.read<AppDatabase>();
+                          final amount = int.parse(amountController.text);
+                          await database.transaction(() async {
+                            final employeeDao = EmployeeDao(database);
+                            final current = await employeeDao.getEmployee(
+                              selectedEmployee!.data.id,
+                            );
+                            if (current == null) {
+                              throw StateError('Employee was not found.');
+                            }
+
+                            final result =
+                                BigInt.from(current.points) +
+                                BigInt.from(amount);
+                            final minPoints = -(BigInt.one << 63);
+                            final maxPoints = (BigInt.one << 63) - BigInt.one;
+                            if (result < minPoints || result > maxPoints) {
+                              throw StateError(
+                                'The resulting points balance is out of range.',
+                              );
+                            }
+                            final newEmployee = current.copyWith(
+                              points: result.toInt(),
+                            );
+                            if (!await employeeDao.updateEmployee(
+                              newEmployee,
+                            )) {
+                              throw StateError('Employee was not found.');
+                            }
+                            await HistoryDao(database).addEntry(
+                              actionType: 'Points adjusted',
+                              description: descriptionController.text.trim(),
+                              actor: managerController.text.trim(),
+                              employee:
+                                  '${current.firstName} ${current.lastName}'
+                                      .trim(),
+                              points:
+                                  '${amount >= 0 ? '+' : ''}${NumberFormat().format(amount)}',
+                            );
+                          });
+
+                          if (mounted && dialogContext.mounted) {
+                            Navigator.of(dialogContext).pop();
+                          }
+                        } catch (error) {
+                          if (mounted) {
+                            setDialogState(() => isSaving = false);
+                            if (dialogContext.mounted) {
+                              ScaffoldMessenger.of(dialogContext).showSnackBar(
+                                SnackBar(
+                                  content: Text(
+                                    'Could not adjust points: $error',
+                                  ),
+                                ),
+                              );
+                            }
+                          }
+                        }
+                      },
+                child: const Text('Apply'),
+              ),
+            ],
+          );
+        },
+      ),
+    );
+    searchController.dispose();
+    amountController.dispose();
+    managerController.dispose();
+    descriptionController.dispose();
   }
 
   @override
@@ -231,7 +460,6 @@ class _PointsGridState extends State<PointsGrid> {
                         final employee = employees[index];
                         return PointCard(
                           employee: employee,
-                          rewards: widget.rewards,
                           isSelected:
                               useDetailsPanel &&
                               employee.data.id == _selectedEmployeeId,
@@ -252,7 +480,14 @@ class _PointsGridState extends State<PointsGrid> {
                 );
 
                 if (!useDetailsPanel) {
-                  return grid;
+                  return Scaffold(
+                    body: grid,
+                    floatingActionButton: FloatingActionButton(
+                      onPressed: () =>
+                          _showSearchAndAdjustDialog(context, employees),
+                      child: const Icon(Icons.add),
+                    ),
+                  );
                 }
 
                 if (_skipDrawerAnimation && !_restoreDrawerAnimationScheduled) {
@@ -270,65 +505,84 @@ class _PointsGridState extends State<PointsGrid> {
                     : const Duration(milliseconds: 280);
                 final drawerEmployee = selectedEmployee ?? _drawerEmployee;
 
-                return Row(
-                  children: [
-                    Expanded(child: grid),
-                    SizedBox(
-                      width: _detailsPanelWidth,
-                      child: DecoratedBox(
-                        decoration: BoxDecoration(
-                          color: Theme.of(context)
-                              .colorScheme
-                              .surfaceContainerLow,
-                          border: Border(
-                            left: BorderSide(
-                              color: Theme.of(context)
-                                  .colorScheme
-                                  .outlineVariant,
-                            ),
-                          ),
-                        ),
+                return Scaffold(
+                  body: Row(
+                    children: [
+                      Expanded(
                         child: Stack(
-                          fit: StackFit.expand,
                           children: [
-                            const HistoryMenu(),
+                            grid,
                             AnimatedPositioned(
                               duration: drawerDuration,
                               curve: Curves.easeOutCubic,
-                              top: 0,
-                              bottom: 0,
-                              right: selectedEmployee == null
-                                  ? -_detailsPanelWidth
-                                  : 0,
-                              width: _detailsPanelWidth,
-                              onEnd: () {
-                                if (selectedEmployee == null &&
-                                    _drawerEmployee != null) {
-                                  setState(() => _drawerEmployee = null);
-                                }
-                              },
-                              child: drawerEmployee == null
-                                  ? const SizedBox.shrink()
-                                  : Material(
-                                      color: Theme.of(context)
-                                          .colorScheme
-                                          .surfaceContainerLow,
-                                      elevation: 8,
-                                      child: _EmployeeDetailsPanel(
-                                        employee: drawerEmployee,
-                                        rewards: widget.rewards,
-                                        writeups: widget.writeups,
-                                        onClose: () => setState(
-                                          () => _selectedEmployeeId = null,
-                                        ),
-                                      ),
-                                    ),
+                              bottom: 16,
+                              right: 16,
+                              child: FloatingActionButton(
+                                onPressed: () => _showSearchAndAdjustDialog(
+                                  context,
+                                  employees,
+                                ),
+                                child: const Icon(Icons.add),
+                              ),
                             ),
                           ],
                         ),
                       ),
-                    ),
-                  ],
+                      SizedBox(
+                        width: _detailsPanelWidth,
+                        child: DecoratedBox(
+                          decoration: BoxDecoration(
+                            color: Theme.of(context)
+                                .colorScheme
+                                .surfaceContainerLow,
+                            border: Border(
+                              left: BorderSide(
+                                color: Theme.of(context)
+                                    .colorScheme
+                                    .outlineVariant,
+                              ),
+                            ),
+                          ),
+                          child: Stack(
+                            fit: StackFit.expand,
+                            children: [
+                              const HistoryMenu(),
+                              AnimatedPositioned(
+                                duration: drawerDuration,
+                                curve: Curves.easeOutCubic,
+                                top: 0,
+                                bottom: 0,
+                                right: selectedEmployee == null
+                                    ? -_detailsPanelWidth
+                                    : 0,
+                                width: _detailsPanelWidth,
+                                onEnd: () {
+                                  if (selectedEmployee == null &&
+                                      _drawerEmployee != null) {
+                                    setState(() => _drawerEmployee = null);
+                                  }
+                                },
+                                child: drawerEmployee == null
+                                    ? const SizedBox.shrink()
+                                    : Material(
+                                        color: Theme.of(context)
+                                            .colorScheme
+                                            .surfaceContainerLow,
+                                        elevation: 8,
+                                        child: _EmployeeDetailsPanel(
+                                          employee: drawerEmployee,
+                                          onClose: () => setState(
+                                            () => _selectedEmployeeId = null,
+                                          ),
+                                        ),
+                                      ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
                 );
               },
             );
@@ -339,18 +593,18 @@ class _PointsGridState extends State<PointsGrid> {
   }
 }
 
-Widget _twoRowChips(List<Widget> chips) => _TwoRowChips(chips: chips);
+Widget _wrapChips(List<Widget> chips) => _ChipRows(chips: chips);
 
-class _TwoRowChips extends StatefulWidget {
-  const _TwoRowChips({required this.chips});
+class _ChipRows extends StatefulWidget {
+  const _ChipRows({required this.chips});
 
   final List<Widget> chips;
 
   @override
-  State<_TwoRowChips> createState() => _TwoRowChipsState();
+  State<_ChipRows> createState() => _ChipRowsState();
 }
 
-class _TwoRowChipsState extends State<_TwoRowChips> {
+class _ChipRowsState extends State<_ChipRows> {
   final _controller = ScrollController();
   bool _overflows = false;
 
@@ -362,56 +616,152 @@ class _TwoRowChipsState extends State<_TwoRowChips> {
 
   @override
   Widget build(BuildContext context) {
-    final firstRow = <Widget>[];
-    final secondRow = <Widget>[];
-    for (var index = 0; index < widget.chips.length; index++) {
-      (index.isEven ? firstRow : secondRow).add(widget.chips[index]);
-    }
-
-    Widget row(List<Widget> rowChips) => Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        for (var index = 0; index < rowChips.length; index++) ...[
-          if (index > 0) const SizedBox(width: 8),
-          rowChips[index],
-        ],
-      ],
-    );
-
-    return NotificationListener<ScrollMetricsNotification>(
-      onNotification: (notification) {
-        final overflows = notification.metrics.maxScrollExtent > 0;
-        if (overflows != _overflows) {
-          WidgetsBinding.instance.addPostFrameCallback((_) {
-            if (mounted) setState(() => _overflows = overflows);
-          });
-        }
-        return false;
-      },
-      child: Scrollbar(
-        controller: _controller,
-        thumbVisibility: true,
-        child: SingleChildScrollView(
-          controller: _controller,
-          scrollDirection: Axis.horizontal,
-          child: Padding(
-            padding: EdgeInsets.only(bottom: _overflows ? 12 : 0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                row(firstRow),
-                if (secondRow.isNotEmpty) ...[
-                  const SizedBox(height: 8),
-                  row(secondRow),
-                ],
-              ],
+    return LayoutBuilder(
+      builder: (context, constraints) =>
+          NotificationListener<ScrollMetricsNotification>(
+            onNotification: (notification) {
+              final overflows = notification.metrics.maxScrollExtent > 0;
+              if (overflows != _overflows) {
+                WidgetsBinding.instance.addPostFrameCallback((_) {
+                  if (mounted) setState(() => _overflows = overflows);
+                });
+              }
+              return false;
+            },
+            child: Scrollbar(
+              controller: _controller,
+              thumbVisibility: true,
+              child: SingleChildScrollView(
+                controller: _controller,
+                scrollDirection: Axis.horizontal,
+                child: Padding(
+                  padding: EdgeInsets.only(bottom: _overflows ? 16 : 0),
+                  child: _ChipRowLayout(
+                    viewportWidth: constraints.maxWidth,
+                    children: widget.chips,
+                  ),
+                ),
+              ),
             ),
           ),
-        ),
-      ),
     );
   }
+}
+
+class _ChipRowLayout extends MultiChildRenderObjectWidget {
+  const _ChipRowLayout({required this.viewportWidth, required super.children});
+
+  final double viewportWidth;
+
+  @override
+  _RenderChipRows createRenderObject(BuildContext context) =>
+      _RenderChipRows(viewportWidth, Directionality.of(context));
+
+  @override
+  void updateRenderObject(BuildContext context, _RenderChipRows renderObject) {
+    renderObject
+      ..viewportWidth = viewportWidth
+      ..textDirection = Directionality.of(context);
+  }
+}
+
+class _ChipRowParentData extends ContainerBoxParentData<RenderBox> {
+  int row = 0;
+}
+
+class _RenderChipRows extends RenderBox
+    with
+        ContainerRenderObjectMixin<RenderBox, _ChipRowParentData>,
+        RenderBoxContainerDefaultsMixin<RenderBox, _ChipRowParentData> {
+  _RenderChipRows(this._viewportWidth, this._textDirection);
+
+  double _viewportWidth;
+  TextDirection _textDirection;
+
+  set viewportWidth(double value) {
+    if (_viewportWidth == value) return;
+    _viewportWidth = value;
+    markNeedsLayout();
+  }
+
+  set textDirection(TextDirection value) {
+    if (_textDirection == value) return;
+    _textDirection = value;
+    markNeedsLayout();
+  }
+
+  @override
+  void setupParentData(RenderBox child) {
+    if (child.parentData is! _ChipRowParentData) {
+      child.parentData = _ChipRowParentData();
+    }
+  }
+
+  @override
+  void performLayout() {
+    const spacing = 8.0;
+    final widths = [0.0, 0.0];
+    final heights = [0.0, 0.0];
+    final counts = [0, 0];
+    var totalWidth = 0.0;
+    var index = 0;
+    for (var child = firstChild; child != null; child = childAfter(child)) {
+      child.layout(
+        BoxConstraints(maxHeight: constraints.maxHeight),
+        parentUsesSize: true,
+      );
+      final row = widths[0] <= widths[1] ? 0 : 1;
+      (child.parentData! as _ChipRowParentData).row = row;
+      if (counts[row] > 0) widths[row] += spacing;
+      widths[row] += child.size.width;
+      heights[row] = math.max(heights[row], child.size.height);
+      counts[row]++;
+      if (index > 0) totalWidth += spacing;
+      totalWidth += child.size.width;
+      index++;
+    }
+
+    final singleRow = totalWidth <= _viewportWidth;
+    final contentWidth = singleRow
+        ? _viewportWidth
+        : math.max(_viewportWidth, math.max(widths[0], widths[1]));
+    final contentHeight = singleRow
+        ? math.max(heights[0], heights[1])
+        : heights[0] + (counts[1] > 0 ? spacing + heights[1] : 0);
+    size = constraints.constrain(Size(contentWidth, contentHeight));
+
+    final insets = singleRow
+        ? [(size.width - totalWidth) / 2, 0.0]
+        : contentWidth <= _viewportWidth
+        ? [(size.width - widths[0]) / 2, (size.width - widths[1]) / 2]
+        : [0.0, 0.0];
+    final positions = _textDirection == TextDirection.ltr
+        ? insets
+        : [size.width - insets[0], size.width - insets[1]];
+    for (var child = firstChild; child != null; child = childAfter(child)) {
+      final data = child.parentData! as _ChipRowParentData;
+      final row = singleRow ? 0 : data.row;
+      final rowHeight = singleRow ? contentHeight : heights[row];
+      final y =
+          (row == 1 ? heights[0] + spacing : 0) +
+          (rowHeight - child.size.height) / 2;
+      final x = _textDirection == TextDirection.ltr
+          ? positions[row]
+          : positions[row] - child.size.width;
+      data.offset = Offset(x, y);
+      positions[row] +=
+          (child.size.width + spacing) *
+          (_textDirection == TextDirection.ltr ? 1 : -1);
+    }
+  }
+
+  @override
+  void paint(PaintingContext context, Offset offset) =>
+      defaultPaint(context, offset);
+
+  @override
+  bool hitTestChildren(BoxHitTestResult result, {required Offset position}) =>
+      defaultHitTestChildren(result, position: position);
 }
 
 class _DelayedProgressIndicator extends StatefulWidget {
@@ -439,14 +789,9 @@ class _DelayedProgressIndicatorState extends State<_DelayedProgressIndicator> {
 }
 
 class _EmployeeRewards extends StatelessWidget {
-  const _EmployeeRewards({
-    required this.employee,
-    required this.rewards,
-    required this.onRedeemed,
-  });
+  const _EmployeeRewards({required this.employee, required this.onRedeemed});
 
   final Employee employee;
-  final List<Reward> rewards;
   final ValueChanged<Employee> onRedeemed;
 
   @override
@@ -456,49 +801,56 @@ class _EmployeeRewards extends StatelessWidget {
       children: [
         Text('Rewards', style: Theme.of(context).textTheme.titleSmall),
         const SizedBox(height: 8),
-        _twoRowChips([
-          for (final reward in rewards)
-            FilledButton(
-              style: FilledButton.styleFrom(
-                backgroundColor: employee.data.points >= reward.pointsRequired
-                    ? Theme.of(context).colorScheme.secondaryContainer
-                    : Theme.of(context).colorScheme.surfaceContainerHighest,
-                foregroundColor: employee.data.points >= reward.pointsRequired
-                    ? Theme.of(context).colorScheme.onSecondaryContainer
-                    : Theme.of(context).colorScheme.onSurfaceVariant,
-                shape: ContinuousRectangleBorder(
-                  borderRadius: BorderRadius.circular(16),
+        StreamBuilder<List<RewardTableData>>(
+          stream: context.read<AppDatabase>().watchRewards(),
+          builder: (context, snapshot) {
+            if (snapshot.hasError) {
+              return Text('Could not load rewards: ${snapshot.error}');
+            }
+            if (!snapshot.hasData) return const _DelayedProgressIndicator();
+            return _wrapChips([
+              for (final reward in snapshot.data!)
+                FilledButton(
+                  style: FilledButton.styleFrom(
+                    backgroundColor:
+                        employee.data.points >= reward.pointsRequired
+                        ? Theme.of(context).colorScheme.secondaryContainer
+                        : Theme.of(context).colorScheme.surfaceContainerHighest,
+                    foregroundColor:
+                        employee.data.points >= reward.pointsRequired
+                        ? Theme.of(context).colorScheme.onSecondaryContainer
+                        : Theme.of(context).colorScheme.onSurfaceVariant,
+                    padding: const EdgeInsets.symmetric(horizontal: 14),
+                    shape: ContinuousRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                  ),
+                  onPressed: () => PointCard.redeemReward(
+                    context,
+                    employee,
+                    reward,
+                    (points) => onRedeemed(
+                      Employee(employee.data.copyWith(points: points)),
+                    ),
+                  ),
+                  child: Text(
+                    '${reward.name}\n'
+                    '-${NumberFormat().format(reward.pointsRequired)} points',
+                    textAlign: TextAlign.center,
+                  ),
                 ),
-              ),
-              onPressed: () => PointCard.redeemReward(
-                context,
-                employee,
-                reward,
-                (points) => onRedeemed(
-                  Employee(employee.data.copyWith(points: points)),
-                ),
-              ),
-              child: Text(
-                '${reward.name}\n'
-                '${NumberFormat().format(reward.pointsRequired)} points',
-                textAlign: TextAlign.center,
-              ),
-            ),
-        ]),
+            ]);
+          },
+        ),
       ],
     );
   }
 }
 
 class _EmployeeWriteups extends StatelessWidget {
-  const _EmployeeWriteups({
-    required this.employee,
-    required this.writeups,
-    required this.onWritten,
-  });
+  const _EmployeeWriteups({required this.employee, required this.onWritten});
 
   final Employee employee;
-  final List<Writeup> writeups;
   final ValueChanged<Employee> onWritten;
 
   @override
@@ -508,51 +860,54 @@ class _EmployeeWriteups extends StatelessWidget {
       children: [
         Text('Writeups', style: Theme.of(context).textTheme.titleSmall),
         const SizedBox(height: 8),
-        _twoRowChips([
-          for (final writeup in writeups)
-            FilledButton(
-              style: FilledButton.styleFrom(
-                backgroundColor: Color.lerp(
-                  Colors.grey.shade900,
-                  Colors.red.shade900,
-                  0.3,
-                ),
-                foregroundColor: Colors.grey.shade300,
-                shape: ContinuousRectangleBorder(
-                  borderRadius: BorderRadius.circular(16),
-                ),
-              ),
-              onPressed: employee.data.points <= 0
-                  ? null
-                  : () => PointCard.applyWriteup(
-                      context,
-                      employee,
-                      writeup,
-                      onWritten,
+        StreamBuilder<List<WriteupTableData>>(
+          stream: context.read<AppDatabase>().watchWriteups(),
+          builder: (context, snapshot) {
+            if (snapshot.hasError) {
+              return Text('Could not load writeups: ${snapshot.error}');
+            }
+            if (!snapshot.hasData) return const _DelayedProgressIndicator();
+            return _wrapChips([
+              for (final writeup in snapshot.data!)
+                FilledButton(
+                  style: FilledButton.styleFrom(
+                    backgroundColor: Color.lerp(
+                      Colors.grey.shade900,
+                      Colors.red.shade900,
+                      0.3,
                     ),
-              child: Text(
-                '${writeup.title}\n'
-                '${NumberFormat().format(writeup.points)} points',
-                textAlign: TextAlign.center,
-              ),
-            ),
-        ]),
+                    foregroundColor: Colors.grey.shade300,
+                    padding: const EdgeInsets.symmetric(horizontal: 14),
+                    shape: ContinuousRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                  ),
+                  onPressed: employee.data.points <= 0
+                      ? null
+                      : () => PointCard.applyWriteup(
+                          context,
+                          employee,
+                          writeup,
+                          onWritten,
+                        ),
+                  child: Text(
+                    '${writeup.title}\n'
+                    '-${NumberFormat().format(writeup.points)} points',
+                    textAlign: TextAlign.center,
+                  ),
+                ),
+            ]);
+          },
+        ),
       ],
     );
   }
 }
 
 class _EmployeeDetailsPanel extends StatefulWidget {
-  const _EmployeeDetailsPanel({
-    required this.employee,
-    required this.rewards,
-    required this.writeups,
-    required this.onClose,
-  });
+  const _EmployeeDetailsPanel({required this.employee, required this.onClose});
 
   final Employee employee;
-  final List<Reward> rewards;
-  final List<Writeup> writeups;
   final VoidCallback onClose;
 
   @override
@@ -602,7 +957,7 @@ class _EmployeeDetailsPanelState extends State<_EmployeeDetailsPanel> {
                 ),
               ),
               Padding(
-                padding: const EdgeInsets.fromLTRB(48, 24, 48, 0),
+                padding: const EdgeInsets.fromLTRB(48, 24, 48, 16),
                 child: SizedBox(
                   width: double.infinity,
                   child: Column(
@@ -633,17 +988,44 @@ class _EmployeeDetailsPanelState extends State<_EmployeeDetailsPanel> {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
+                    Center(
+                      child: FilledButton.icon(
+                        style: FilledButton.styleFrom(
+                          backgroundColor: Theme.of(context)
+                              .colorScheme
+                              .secondaryContainer,
+                          foregroundColor: Theme.of(context)
+                              .colorScheme
+                              .onSecondaryContainer,
+                        ),
+                        onPressed: () async {
+                          final updated = await showDialog<Employee>(
+                            context: context,
+                            barrierDismissible: false,
+                            builder: (_) =>
+                                _AdjustPointsDialog(employee: _employee),
+                          );
+                          if (context.mounted && updated != null) {
+                            if (_employee.data.id == updated.data.id) {
+                              setState(() => _employee = updated);
+                            }
+                          }
+                        },
+                        icon: const Icon(Icons.add),
+                        label: const Text('Add Points'),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
                     _EmployeeRewards(
                       employee: _employee,
-                      rewards: widget.rewards,
                       onRedeemed: (employee) =>
                           setState(() => _employee = employee),
                     ),
                     const SizedBox(height: 16),
                     _EmployeeWriteups(
                       employee: _employee,
-                      writeups: widget.writeups,
                       onWritten: (employee) =>
                           setState(() => _employee = employee),
                     ),
@@ -671,22 +1053,159 @@ class _EmployeeDetailsPanelState extends State<_EmployeeDetailsPanel> {
   }
 }
 
+class _AdjustPointsDialog extends StatefulWidget {
+  const _AdjustPointsDialog({required this.employee});
+
+  final Employee employee;
+
+  @override
+  State<_AdjustPointsDialog> createState() => _AdjustPointsDialogState();
+}
+
+class _AdjustPointsDialogState extends State<_AdjustPointsDialog> {
+  final _formKey = GlobalKey<FormState>();
+  final _amount = TextEditingController();
+  final _manager = TextEditingController();
+  final _description = TextEditingController();
+  bool _isSaving = false;
+  String? _error;
+
+  @override
+  void dispose() {
+    _amount.dispose();
+    _manager.dispose();
+    _description.dispose();
+    super.dispose();
+  }
+
+  Future<void> _save() async {
+    if (!_formKey.currentState!.validate()) return;
+    setState(() {
+      _isSaving = true;
+      _error = null;
+    });
+
+    try {
+      final database = context.read<AppDatabase>();
+      final amount = int.parse(_amount.text);
+      final updated = await database.transaction(() async {
+        final employeeDao = EmployeeDao(database);
+        final current = await employeeDao.getEmployee(widget.employee.data.id);
+        if (current == null) throw StateError('Employee was not found.');
+
+        final result = BigInt.from(current.points) + BigInt.from(amount);
+        final minPoints = -(BigInt.one << 63);
+        final maxPoints = (BigInt.one << 63) - BigInt.one;
+        if (result < minPoints || result > maxPoints) {
+          throw StateError('The resulting points balance is out of range.');
+        }
+        final newEmployee = current.copyWith(points: result.toInt());
+        if (!await employeeDao.updateEmployee(newEmployee)) {
+          throw StateError('Employee was not found.');
+        }
+        await HistoryDao(database).addEntry(
+          actionType: 'Points adjusted',
+          description: _description.text.trim(),
+          actor: _manager.text.trim(),
+          employee: '${current.firstName} ${current.lastName}'.trim(),
+          points: '${amount >= 0 ? '+' : ''}${NumberFormat().format(amount)}',
+        );
+        return Employee(newEmployee);
+      });
+
+      if (mounted) Navigator.of(context).pop(updated);
+    } catch (error) {
+      if (mounted) setState(() => _error = 'Could not adjust points: $error');
+    } finally {
+      if (mounted) setState(() => _isSaving = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return PopScope(
+      canPop: !_isSaving,
+      child: AlertDialog(
+        title: Text('Adjust points for ${widget.employee.name}'),
+        content: SizedBox(
+          width: 320,
+          child: Form(
+            key: _formKey,
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  TextFormField(
+                    controller: _amount,
+                    autofocus: true,
+                    enabled: !_isSaving,
+                    keyboardType: TextInputType.number,
+                    inputFormatters: [
+                      FilteringTextInputFormatter.allow(RegExp(r'[0-9\-]')),
+                      LengthLimitingTextInputFormatter(19),
+                    ],
+                    decoration: const InputDecoration(labelText: 'Points'),
+                    validator: (value) {
+                      final amount = int.tryParse(value ?? '');
+                      return amount == null
+                          ? 'Enter a number (can be negative)'
+                          : null;
+                    },
+                  ),
+                  TextField(
+                    controller: _manager,
+                    enabled: !_isSaving,
+                    decoration: const InputDecoration(labelText: 'Manager'),
+                  ),
+                  TextField(
+                    controller: _description,
+                    enabled: !_isSaving,
+                    decoration: const InputDecoration(labelText: 'Description'),
+                  ),
+                  if (_error != null)
+                    Text(
+                      _error!,
+                      style: TextStyle(
+                        color: Theme.of(context).colorScheme.error,
+                      ),
+                    ),
+                ],
+              ),
+            ),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: _isSaving ? null : () => Navigator.of(context).pop(),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: _isSaving ? null : _save,
+            child: const Text('Apply'),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 class PointCard extends StatelessWidget {
   const PointCard({
     super.key,
     required this.employee,
-    required this.rewards,
     this.onTap,
     this.isSelected = false,
   });
 
   final Employee employee;
-  final List<Reward> rewards;
   final VoidCallback? onTap;
   final bool isSelected;
 
   static bool _isPointsHistoryEntry(HistoryTableData entry) =>
       entry.actionType == 'Mass add points' ||
+      entry.actionType == 'Points added' ||
+      entry.actionType == 'Points removed' ||
+      entry.actionType == 'Points adjusted' ||
       entry.actionType == 'Reward redeemed' ||
       entry.actionType == 'Writeup';
 
@@ -752,7 +1271,11 @@ class PointCard extends StatelessWidget {
           itemBuilder: (context, index) {
             final item = entries[index];
             final entry = item.entry;
-            final received = entry.actionType == 'Mass add points';
+            final received =
+                entry.actionType == 'Mass add points' ||
+                entry.actionType == 'Points added' ||
+                (entry.actionType == 'Points adjusted' &&
+                    !(entry.points?.startsWith('-') ?? false));
             final description = entry.description.trim();
             return ListTile(
               dense: true,
@@ -767,7 +1290,11 @@ class PointCard extends StatelessWidget {
                           children: [
                             Flexible(
                               child: Text(
-                                received ? 'Points received' : 'Points removed',
+                                description.isEmpty
+                                    ? (received
+                                          ? 'Points received'
+                                          : 'Points removed')
+                                    : description,
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
                               ),
@@ -791,24 +1318,16 @@ class PointCard extends StatelessWidget {
                     item.points!,
                     textAlign: TextAlign.right,
                     style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                      color: received
-                          ? Theme.of(context).colorScheme.primary
-                          : Theme.of(context).colorScheme.error,
+                      color: pointsHistoryColor(
+                        context,
+                        entry.actionType,
+                        points: item.points,
+                      ),
                       fontWeight: FontWeight.w600,
                     ),
                   ),
                 ],
               ),
-              subtitle: description.isEmpty
-                  ? null
-                  : Text(
-                      description,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: Theme.of(context).colorScheme.onSurfaceVariant,
-                      ),
-                    ),
             );
           },
         );
@@ -841,7 +1360,7 @@ class PointCard extends StatelessWidget {
   static Future<void> applyWriteup(
     BuildContext context,
     Employee currentEmployee,
-    Writeup writeup,
+    WriteupTableData writeup,
     ValueChanged<Employee> updateEmployee,
   ) async {
     final pointsRemoved = writeup.points < currentEmployee.data.points
@@ -887,7 +1406,7 @@ class PointCard extends StatelessWidget {
   static Future<void> redeemReward(
     BuildContext context,
     Employee currentEmployee,
-    Reward reward,
+    RewardTableData reward,
     ValueChanged<int> updatePoints,
   ) async {
     final remainingPoints = currentEmployee.data.points - reward.pointsRequired;
@@ -1000,53 +1519,92 @@ class PointCard extends StatelessWidget {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Wrap(
-                  alignment: WrapAlignment.center,
-                  spacing: 8,
-                  runSpacing: 8,
-                  children: [
-                    for (final reward in rewards)
-                      FilledButton(
-                        style: FilledButton.styleFrom(
-                          backgroundColor:
-                              currentEmployee.data.points >=
-                                  reward.pointsRequired
-                              ? Theme.of(dialogContext)
-                                    .colorScheme
-                                    .secondaryContainer
-                              : Theme.of(dialogContext)
-                                    .colorScheme
-                                    .surfaceContainerHighest,
-                          foregroundColor:
-                              currentEmployee.data.points >=
-                                  reward.pointsRequired
-                              ? Theme.of(dialogContext)
-                                    .colorScheme
-                                    .onSecondaryContainer
-                              : Theme.of(dialogContext)
-                                    .colorScheme
-                                    .onSurfaceVariant,
-                          shape: ContinuousRectangleBorder(
-                            borderRadius: BorderRadius.circular(16),
-                          ),
-                        ),
-                        onPressed: () => redeemReward(
-                          dialogContext,
-                          currentEmployee,
-                          reward,
-                          (points) => setDialogState(
-                            () => currentEmployee = Employee(
-                              currentEmployee.data.copyWith(points: points),
+                Center(
+                  child: FilledButton.icon(
+                    style: FilledButton.styleFrom(
+                      backgroundColor: Theme.of(dialogContext)
+                          .colorScheme
+                          .secondaryContainer,
+                      foregroundColor: Theme.of(dialogContext)
+                          .colorScheme
+                          .onSecondaryContainer,
+                    ),
+                    onPressed: () async {
+                      final updated = await showDialog<Employee>(
+                        context: dialogContext,
+                        barrierDismissible: false,
+                        builder: (_) =>
+                            _AdjustPointsDialog(employee: currentEmployee),
+                      );
+                      if (dialogContext.mounted && updated != null) {
+                        if (currentEmployee.data.id == updated.data.id) {
+                          setDialogState(() => currentEmployee = updated);
+                        }
+                      }
+                    },
+                    icon: const Icon(Icons.add),
+                    label: const Text('Add Points'),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                StreamBuilder<List<RewardTableData>>(
+                  stream: context.read<AppDatabase>().watchRewards(),
+                  builder: (context, snapshot) {
+                    if (snapshot.hasError) {
+                      return Text('Could not load rewards: ${snapshot.error}');
+                    }
+                    if (!snapshot.hasData) {
+                      return const _DelayedProgressIndicator();
+                    }
+                    return Wrap(
+                      alignment: WrapAlignment.center,
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: [
+                        for (final reward in snapshot.data!)
+                          FilledButton(
+                            style: FilledButton.styleFrom(
+                              backgroundColor:
+                                  currentEmployee.data.points >=
+                                      reward.pointsRequired
+                                  ? Theme.of(dialogContext)
+                                        .colorScheme
+                                        .secondaryContainer
+                                  : Theme.of(dialogContext)
+                                        .colorScheme
+                                        .surfaceContainerHighest,
+                              foregroundColor:
+                                  currentEmployee.data.points >=
+                                      reward.pointsRequired
+                                  ? Theme.of(dialogContext)
+                                        .colorScheme
+                                        .onSecondaryContainer
+                                  : Theme.of(dialogContext)
+                                        .colorScheme
+                                        .onSurfaceVariant,
+                              shape: ContinuousRectangleBorder(
+                                borderRadius: BorderRadius.circular(16),
+                              ),
+                            ),
+                            onPressed: () => redeemReward(
+                              dialogContext,
+                              currentEmployee,
+                              reward,
+                              (points) => setDialogState(
+                                () => currentEmployee = Employee(
+                                  currentEmployee.data.copyWith(points: points),
+                                ),
+                              ),
+                            ),
+                            child: Text(
+                              '${reward.name}\n'
+                              '-${NumberFormat().format(reward.pointsRequired)} points',
+                              textAlign: TextAlign.center,
                             ),
                           ),
-                        ),
-                        child: Text(
-                          '${reward.name}\n'
-                          '${NumberFormat().format(reward.pointsRequired)} points',
-                          textAlign: TextAlign.center,
-                        ),
-                      ),
-                  ],
+                      ],
+                    );
+                  },
                 ),
                 buildEmployeeHistory(dialogContext, currentEmployee),
               ],
@@ -1095,6 +1653,53 @@ class PointCard extends StatelessWidget {
               ],
             ),
           ),
+        ),
+      ),
+    );
+  }
+}
+
+class _HoverableEmployeeCard extends StatefulWidget {
+  const _HoverableEmployeeCard({required this.employee, required this.onTap});
+
+  final Employee employee;
+  final VoidCallback onTap;
+
+  @override
+  State<_HoverableEmployeeCard> createState() => _HoverableEmployeeCardState();
+}
+
+class _HoverableEmployeeCardState extends State<_HoverableEmployeeCard> {
+  bool _isHovered = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return MouseRegion(
+      onEnter: (_) => setState(() => _isHovered = true),
+      onExit: (_) => setState(() => _isHovered = false),
+      child: Container(
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: _isHovered
+              ? Theme.of(context).colorScheme.secondaryContainer
+              : null,
+          border: Border.all(color: Theme.of(context).colorScheme.outline),
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text(
+              widget.employee.name,
+              style: Theme.of(context).textTheme.titleMedium,
+            ),
+            Text(
+              widget.employee.formattedPoints,
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+              ),
+            ),
+          ],
         ),
       ),
     );

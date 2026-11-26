@@ -1,3 +1,6 @@
+import 'dart:io';
+
+import 'package:flutter/services.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:points_sheet/database.dart';
 import 'package:points_sheet/history_menu.dart';
@@ -6,25 +9,37 @@ import 'package:window_manager/window_manager.dart';
 
 import 'actions_bar.dart';
 import 'points_grid.dart';
-import 'sling.dart';
 import 'update_app.dart';
+import 'window_position.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  final window = WindowManager.instance.getCurrent()!;
-  window.minimumSize = const Size(440, 500).toNative();
+  final ByteData data = await PlatformAssetBundle().load(
+    'assets/Sectigo Public Server Authentication CA DV E36.crt',
+  );
+  SecurityContext.defaultContext.setTrustedCertificatesBytes(
+    data.buffer.asUint8List(),
+  );
 
-  runApp(const MyApp());
+  final window = WindowManager.instance.getCurrent()!;
+  window.minimumSize = const Size(440, 545).toNative();
+  final database = AppDatabase();
+  await WindowPositionTracker(window, database).initialize();
+
+  runApp(MyApp(database: database));
 }
 
 class MyApp extends StatelessWidget {
-  const MyApp({super.key});
+  const MyApp({super.key, required this.database});
+
+  final AppDatabase database;
 
   @override
   Widget build(BuildContext context) {
     return Provider<AppDatabase>(
-      create: (_) => AppDatabase(),
+      create: (_) => database,
+      lazy: false,
       dispose: (_, database) => database.close(),
       child: MaterialApp(
         title: 'Points Sheet',
@@ -67,21 +82,6 @@ class _HomePageState extends State<HomePage> {
     super.dispose();
   }
 
-  final rewards = <Reward>[
-    const Reward('Mocktail', 250),
-    const Reward('Hot Food', 500),
-    const Reward('Any Concessions', 1000),
-    const Reward('I dont remember 2', 1500),
-    const Reward('I dont remember 3', 2000),
-    const Reward('I dont remember 4', 2500),
-  ];
-
-  final writeups = <Writeup>[
-    const Writeup('Behavior Writeup', 100),
-    const Writeup('Attendance Writeup', 500),
-    const Writeup('Till Writeup', 50),
-  ];
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -89,10 +89,6 @@ class _HomePageState extends State<HomePage> {
         toolbarHeight: 50,
         backgroundColor: Theme.of(context).colorScheme.primaryContainer,
         title: Text(widget.title),
-        actions: [
-          SlingButton(authorizationToken: _authorizationToken),
-          const SizedBox(width: 8),
-        ],
       ),
       body: LayoutBuilder(
         builder: (context, constraints) {
@@ -113,17 +109,15 @@ class _HomePageState extends State<HomePage> {
           return Column(
             children: [
               ActionsBar(
+                authorizationToken: _authorizationToken,
                 showHistoryButton: !useDetailsPanel,
-                onOpenHistory: () => setState(() => _showHistoryMenu = true),
+                onOpenHistory: () =>
+                    setState(() => _showHistoryMenu = !_showHistoryMenu),
               ),
               Expanded(
                 child: Stack(
                   children: [
-                    PointsGrid(
-                      rewards: rewards,
-                      writeups: writeups,
-                      useDetailsPanel: useDetailsPanel,
-                    ),
+                    PointsGrid(useDetailsPanel: useDetailsPanel),
                     if (_showHistoryMenu && !useDetailsPanel)
                       Positioned.fill(
                         child: ColoredBox(

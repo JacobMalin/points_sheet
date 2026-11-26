@@ -752,11 +752,1005 @@ class HistoryTableCompanion extends UpdateCompanion<HistoryTableData> {
   }
 }
 
+class $RewardTableTable extends RewardTable
+    with TableInfo<$RewardTableTable, RewardTableData> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $RewardTableTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<int> id = GeneratedColumn<int>(
+    'id',
+    aliasedName,
+    false,
+    hasAutoIncrement: true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'PRIMARY KEY AUTOINCREMENT',
+    ),
+  );
+  static const VerificationMeta _nameMeta = const VerificationMeta('name');
+  @override
+  late final GeneratedColumn<String> name = GeneratedColumn<String>(
+    'name',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _pointsRequiredMeta = const VerificationMeta(
+    'pointsRequired',
+  );
+  @override
+  late final GeneratedColumn<int> pointsRequired = GeneratedColumn<int>(
+    'points_required',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _sortOrderMeta = const VerificationMeta(
+    'sortOrder',
+  );
+  @override
+  late final GeneratedColumn<int> sortOrder = GeneratedColumn<int>(
+    'sort_order',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [id, name, pointsRequired, sortOrder];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'reward_table';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<RewardTableData> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    }
+    if (data.containsKey('name')) {
+      context.handle(
+        _nameMeta,
+        name.isAcceptableOrUnknown(data['name']!, _nameMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_nameMeta);
+    }
+    if (data.containsKey('points_required')) {
+      context.handle(
+        _pointsRequiredMeta,
+        pointsRequired.isAcceptableOrUnknown(
+          data['points_required']!,
+          _pointsRequiredMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_pointsRequiredMeta);
+    }
+    if (data.containsKey('sort_order')) {
+      context.handle(
+        _sortOrderMeta,
+        sortOrder.isAcceptableOrUnknown(data['sort_order']!, _sortOrderMeta),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  RewardTableData map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return RewardTableData(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}id'],
+      )!,
+      name: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}name'],
+      )!,
+      pointsRequired: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}points_required'],
+      )!,
+      sortOrder: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}sort_order'],
+      ),
+    );
+  }
+
+  @override
+  $RewardTableTable createAlias(String alias) {
+    return $RewardTableTable(attachedDatabase, alias);
+  }
+}
+
+class RewardTableData extends DataClass implements Insertable<RewardTableData> {
+  final int id;
+  final String name;
+  final int pointsRequired;
+  final int? sortOrder;
+  const RewardTableData({
+    required this.id,
+    required this.name,
+    required this.pointsRequired,
+    this.sortOrder,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<int>(id);
+    map['name'] = Variable<String>(name);
+    map['points_required'] = Variable<int>(pointsRequired);
+    if (!nullToAbsent || sortOrder != null) {
+      map['sort_order'] = Variable<int>(sortOrder);
+    }
+    return map;
+  }
+
+  RewardTableCompanion toCompanion(bool nullToAbsent) {
+    return RewardTableCompanion(
+      id: Value(id),
+      name: Value(name),
+      pointsRequired: Value(pointsRequired),
+      sortOrder: sortOrder == null && nullToAbsent
+          ? const Value.absent()
+          : Value(sortOrder),
+    );
+  }
+
+  factory RewardTableData.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return RewardTableData(
+      id: serializer.fromJson<int>(json['id']),
+      name: serializer.fromJson<String>(json['name']),
+      pointsRequired: serializer.fromJson<int>(json['pointsRequired']),
+      sortOrder: serializer.fromJson<int?>(json['sortOrder']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<int>(id),
+      'name': serializer.toJson<String>(name),
+      'pointsRequired': serializer.toJson<int>(pointsRequired),
+      'sortOrder': serializer.toJson<int?>(sortOrder),
+    };
+  }
+
+  RewardTableData copyWith({
+    int? id,
+    String? name,
+    int? pointsRequired,
+    Value<int?> sortOrder = const Value.absent(),
+  }) => RewardTableData(
+    id: id ?? this.id,
+    name: name ?? this.name,
+    pointsRequired: pointsRequired ?? this.pointsRequired,
+    sortOrder: sortOrder.present ? sortOrder.value : this.sortOrder,
+  );
+  RewardTableData copyWithCompanion(RewardTableCompanion data) {
+    return RewardTableData(
+      id: data.id.present ? data.id.value : this.id,
+      name: data.name.present ? data.name.value : this.name,
+      pointsRequired: data.pointsRequired.present
+          ? data.pointsRequired.value
+          : this.pointsRequired,
+      sortOrder: data.sortOrder.present ? data.sortOrder.value : this.sortOrder,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('RewardTableData(')
+          ..write('id: $id, ')
+          ..write('name: $name, ')
+          ..write('pointsRequired: $pointsRequired, ')
+          ..write('sortOrder: $sortOrder')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(id, name, pointsRequired, sortOrder);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is RewardTableData &&
+          other.id == this.id &&
+          other.name == this.name &&
+          other.pointsRequired == this.pointsRequired &&
+          other.sortOrder == this.sortOrder);
+}
+
+class RewardTableCompanion extends UpdateCompanion<RewardTableData> {
+  final Value<int> id;
+  final Value<String> name;
+  final Value<int> pointsRequired;
+  final Value<int?> sortOrder;
+  const RewardTableCompanion({
+    this.id = const Value.absent(),
+    this.name = const Value.absent(),
+    this.pointsRequired = const Value.absent(),
+    this.sortOrder = const Value.absent(),
+  });
+  RewardTableCompanion.insert({
+    this.id = const Value.absent(),
+    required String name,
+    required int pointsRequired,
+    this.sortOrder = const Value.absent(),
+  }) : name = Value(name),
+       pointsRequired = Value(pointsRequired);
+  static Insertable<RewardTableData> custom({
+    Expression<int>? id,
+    Expression<String>? name,
+    Expression<int>? pointsRequired,
+    Expression<int>? sortOrder,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (name != null) 'name': name,
+      if (pointsRequired != null) 'points_required': pointsRequired,
+      if (sortOrder != null) 'sort_order': sortOrder,
+    });
+  }
+
+  RewardTableCompanion copyWith({
+    Value<int>? id,
+    Value<String>? name,
+    Value<int>? pointsRequired,
+    Value<int?>? sortOrder,
+  }) {
+    return RewardTableCompanion(
+      id: id ?? this.id,
+      name: name ?? this.name,
+      pointsRequired: pointsRequired ?? this.pointsRequired,
+      sortOrder: sortOrder ?? this.sortOrder,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<int>(id.value);
+    }
+    if (name.present) {
+      map['name'] = Variable<String>(name.value);
+    }
+    if (pointsRequired.present) {
+      map['points_required'] = Variable<int>(pointsRequired.value);
+    }
+    if (sortOrder.present) {
+      map['sort_order'] = Variable<int>(sortOrder.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('RewardTableCompanion(')
+          ..write('id: $id, ')
+          ..write('name: $name, ')
+          ..write('pointsRequired: $pointsRequired, ')
+          ..write('sortOrder: $sortOrder')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $WriteupTableTable extends WriteupTable
+    with TableInfo<$WriteupTableTable, WriteupTableData> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $WriteupTableTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<int> id = GeneratedColumn<int>(
+    'id',
+    aliasedName,
+    false,
+    hasAutoIncrement: true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'PRIMARY KEY AUTOINCREMENT',
+    ),
+  );
+  static const VerificationMeta _titleMeta = const VerificationMeta('title');
+  @override
+  late final GeneratedColumn<String> title = GeneratedColumn<String>(
+    'title',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _pointsMeta = const VerificationMeta('points');
+  @override
+  late final GeneratedColumn<int> points = GeneratedColumn<int>(
+    'points',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _sortOrderMeta = const VerificationMeta(
+    'sortOrder',
+  );
+  @override
+  late final GeneratedColumn<int> sortOrder = GeneratedColumn<int>(
+    'sort_order',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [id, title, points, sortOrder];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'writeup_table';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<WriteupTableData> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    }
+    if (data.containsKey('title')) {
+      context.handle(
+        _titleMeta,
+        title.isAcceptableOrUnknown(data['title']!, _titleMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_titleMeta);
+    }
+    if (data.containsKey('points')) {
+      context.handle(
+        _pointsMeta,
+        points.isAcceptableOrUnknown(data['points']!, _pointsMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_pointsMeta);
+    }
+    if (data.containsKey('sort_order')) {
+      context.handle(
+        _sortOrderMeta,
+        sortOrder.isAcceptableOrUnknown(data['sort_order']!, _sortOrderMeta),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  WriteupTableData map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return WriteupTableData(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}id'],
+      )!,
+      title: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}title'],
+      )!,
+      points: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}points'],
+      )!,
+      sortOrder: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}sort_order'],
+      ),
+    );
+  }
+
+  @override
+  $WriteupTableTable createAlias(String alias) {
+    return $WriteupTableTable(attachedDatabase, alias);
+  }
+}
+
+class WriteupTableData extends DataClass
+    implements Insertable<WriteupTableData> {
+  final int id;
+  final String title;
+  final int points;
+  final int? sortOrder;
+  const WriteupTableData({
+    required this.id,
+    required this.title,
+    required this.points,
+    this.sortOrder,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<int>(id);
+    map['title'] = Variable<String>(title);
+    map['points'] = Variable<int>(points);
+    if (!nullToAbsent || sortOrder != null) {
+      map['sort_order'] = Variable<int>(sortOrder);
+    }
+    return map;
+  }
+
+  WriteupTableCompanion toCompanion(bool nullToAbsent) {
+    return WriteupTableCompanion(
+      id: Value(id),
+      title: Value(title),
+      points: Value(points),
+      sortOrder: sortOrder == null && nullToAbsent
+          ? const Value.absent()
+          : Value(sortOrder),
+    );
+  }
+
+  factory WriteupTableData.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return WriteupTableData(
+      id: serializer.fromJson<int>(json['id']),
+      title: serializer.fromJson<String>(json['title']),
+      points: serializer.fromJson<int>(json['points']),
+      sortOrder: serializer.fromJson<int?>(json['sortOrder']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<int>(id),
+      'title': serializer.toJson<String>(title),
+      'points': serializer.toJson<int>(points),
+      'sortOrder': serializer.toJson<int?>(sortOrder),
+    };
+  }
+
+  WriteupTableData copyWith({
+    int? id,
+    String? title,
+    int? points,
+    Value<int?> sortOrder = const Value.absent(),
+  }) => WriteupTableData(
+    id: id ?? this.id,
+    title: title ?? this.title,
+    points: points ?? this.points,
+    sortOrder: sortOrder.present ? sortOrder.value : this.sortOrder,
+  );
+  WriteupTableData copyWithCompanion(WriteupTableCompanion data) {
+    return WriteupTableData(
+      id: data.id.present ? data.id.value : this.id,
+      title: data.title.present ? data.title.value : this.title,
+      points: data.points.present ? data.points.value : this.points,
+      sortOrder: data.sortOrder.present ? data.sortOrder.value : this.sortOrder,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('WriteupTableData(')
+          ..write('id: $id, ')
+          ..write('title: $title, ')
+          ..write('points: $points, ')
+          ..write('sortOrder: $sortOrder')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(id, title, points, sortOrder);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is WriteupTableData &&
+          other.id == this.id &&
+          other.title == this.title &&
+          other.points == this.points &&
+          other.sortOrder == this.sortOrder);
+}
+
+class WriteupTableCompanion extends UpdateCompanion<WriteupTableData> {
+  final Value<int> id;
+  final Value<String> title;
+  final Value<int> points;
+  final Value<int?> sortOrder;
+  const WriteupTableCompanion({
+    this.id = const Value.absent(),
+    this.title = const Value.absent(),
+    this.points = const Value.absent(),
+    this.sortOrder = const Value.absent(),
+  });
+  WriteupTableCompanion.insert({
+    this.id = const Value.absent(),
+    required String title,
+    required int points,
+    this.sortOrder = const Value.absent(),
+  }) : title = Value(title),
+       points = Value(points);
+  static Insertable<WriteupTableData> custom({
+    Expression<int>? id,
+    Expression<String>? title,
+    Expression<int>? points,
+    Expression<int>? sortOrder,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (title != null) 'title': title,
+      if (points != null) 'points': points,
+      if (sortOrder != null) 'sort_order': sortOrder,
+    });
+  }
+
+  WriteupTableCompanion copyWith({
+    Value<int>? id,
+    Value<String>? title,
+    Value<int>? points,
+    Value<int?>? sortOrder,
+  }) {
+    return WriteupTableCompanion(
+      id: id ?? this.id,
+      title: title ?? this.title,
+      points: points ?? this.points,
+      sortOrder: sortOrder ?? this.sortOrder,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<int>(id.value);
+    }
+    if (title.present) {
+      map['title'] = Variable<String>(title.value);
+    }
+    if (points.present) {
+      map['points'] = Variable<int>(points.value);
+    }
+    if (sortOrder.present) {
+      map['sort_order'] = Variable<int>(sortOrder.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('WriteupTableCompanion(')
+          ..write('id: $id, ')
+          ..write('title: $title, ')
+          ..write('points: $points, ')
+          ..write('sortOrder: $sortOrder')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $WindowPositionTableTable extends WindowPositionTable
+    with TableInfo<$WindowPositionTableTable, WindowPositionTableData> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $WindowPositionTableTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<int> id = GeneratedColumn<int>(
+    'id',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(1),
+  );
+  static const VerificationMeta _xMeta = const VerificationMeta('x');
+  @override
+  late final GeneratedColumn<double> x = GeneratedColumn<double>(
+    'x',
+    aliasedName,
+    false,
+    type: DriftSqlType.double,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _yMeta = const VerificationMeta('y');
+  @override
+  late final GeneratedColumn<double> y = GeneratedColumn<double>(
+    'y',
+    aliasedName,
+    false,
+    type: DriftSqlType.double,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _widthMeta = const VerificationMeta('width');
+  @override
+  late final GeneratedColumn<double> width = GeneratedColumn<double>(
+    'width',
+    aliasedName,
+    true,
+    type: DriftSqlType.double,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _heightMeta = const VerificationMeta('height');
+  @override
+  late final GeneratedColumn<double> height = GeneratedColumn<double>(
+    'height',
+    aliasedName,
+    true,
+    type: DriftSqlType.double,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _isMaximizedMeta = const VerificationMeta(
+    'isMaximized',
+  );
+  @override
+  late final GeneratedColumn<bool> isMaximized = GeneratedColumn<bool>(
+    'is_maximized',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("is_maximized" IN (0, 1))',
+    ),
+    defaultValue: const Constant(false),
+  );
+  @override
+  List<GeneratedColumn> get $columns => [id, x, y, width, height, isMaximized];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'window_position_table';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<WindowPositionTableData> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    }
+    if (data.containsKey('x')) {
+      context.handle(_xMeta, x.isAcceptableOrUnknown(data['x']!, _xMeta));
+    } else if (isInserting) {
+      context.missing(_xMeta);
+    }
+    if (data.containsKey('y')) {
+      context.handle(_yMeta, y.isAcceptableOrUnknown(data['y']!, _yMeta));
+    } else if (isInserting) {
+      context.missing(_yMeta);
+    }
+    if (data.containsKey('width')) {
+      context.handle(
+        _widthMeta,
+        width.isAcceptableOrUnknown(data['width']!, _widthMeta),
+      );
+    }
+    if (data.containsKey('height')) {
+      context.handle(
+        _heightMeta,
+        height.isAcceptableOrUnknown(data['height']!, _heightMeta),
+      );
+    }
+    if (data.containsKey('is_maximized')) {
+      context.handle(
+        _isMaximizedMeta,
+        isMaximized.isAcceptableOrUnknown(
+          data['is_maximized']!,
+          _isMaximizedMeta,
+        ),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  WindowPositionTableData map(
+    Map<String, dynamic> data, {
+    String? tablePrefix,
+  }) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return WindowPositionTableData(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}id'],
+      )!,
+      x: attachedDatabase.typeMapping.read(
+        DriftSqlType.double,
+        data['${effectivePrefix}x'],
+      )!,
+      y: attachedDatabase.typeMapping.read(
+        DriftSqlType.double,
+        data['${effectivePrefix}y'],
+      )!,
+      width: attachedDatabase.typeMapping.read(
+        DriftSqlType.double,
+        data['${effectivePrefix}width'],
+      ),
+      height: attachedDatabase.typeMapping.read(
+        DriftSqlType.double,
+        data['${effectivePrefix}height'],
+      ),
+      isMaximized: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}is_maximized'],
+      )!,
+    );
+  }
+
+  @override
+  $WindowPositionTableTable createAlias(String alias) {
+    return $WindowPositionTableTable(attachedDatabase, alias);
+  }
+}
+
+class WindowPositionTableData extends DataClass
+    implements Insertable<WindowPositionTableData> {
+  final int id;
+  final double x;
+  final double y;
+  final double? width;
+  final double? height;
+  final bool isMaximized;
+  const WindowPositionTableData({
+    required this.id,
+    required this.x,
+    required this.y,
+    this.width,
+    this.height,
+    required this.isMaximized,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<int>(id);
+    map['x'] = Variable<double>(x);
+    map['y'] = Variable<double>(y);
+    if (!nullToAbsent || width != null) {
+      map['width'] = Variable<double>(width);
+    }
+    if (!nullToAbsent || height != null) {
+      map['height'] = Variable<double>(height);
+    }
+    map['is_maximized'] = Variable<bool>(isMaximized);
+    return map;
+  }
+
+  WindowPositionTableCompanion toCompanion(bool nullToAbsent) {
+    return WindowPositionTableCompanion(
+      id: Value(id),
+      x: Value(x),
+      y: Value(y),
+      width: width == null && nullToAbsent
+          ? const Value.absent()
+          : Value(width),
+      height: height == null && nullToAbsent
+          ? const Value.absent()
+          : Value(height),
+      isMaximized: Value(isMaximized),
+    );
+  }
+
+  factory WindowPositionTableData.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return WindowPositionTableData(
+      id: serializer.fromJson<int>(json['id']),
+      x: serializer.fromJson<double>(json['x']),
+      y: serializer.fromJson<double>(json['y']),
+      width: serializer.fromJson<double?>(json['width']),
+      height: serializer.fromJson<double?>(json['height']),
+      isMaximized: serializer.fromJson<bool>(json['isMaximized']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<int>(id),
+      'x': serializer.toJson<double>(x),
+      'y': serializer.toJson<double>(y),
+      'width': serializer.toJson<double?>(width),
+      'height': serializer.toJson<double?>(height),
+      'isMaximized': serializer.toJson<bool>(isMaximized),
+    };
+  }
+
+  WindowPositionTableData copyWith({
+    int? id,
+    double? x,
+    double? y,
+    Value<double?> width = const Value.absent(),
+    Value<double?> height = const Value.absent(),
+    bool? isMaximized,
+  }) => WindowPositionTableData(
+    id: id ?? this.id,
+    x: x ?? this.x,
+    y: y ?? this.y,
+    width: width.present ? width.value : this.width,
+    height: height.present ? height.value : this.height,
+    isMaximized: isMaximized ?? this.isMaximized,
+  );
+  WindowPositionTableData copyWithCompanion(WindowPositionTableCompanion data) {
+    return WindowPositionTableData(
+      id: data.id.present ? data.id.value : this.id,
+      x: data.x.present ? data.x.value : this.x,
+      y: data.y.present ? data.y.value : this.y,
+      width: data.width.present ? data.width.value : this.width,
+      height: data.height.present ? data.height.value : this.height,
+      isMaximized: data.isMaximized.present
+          ? data.isMaximized.value
+          : this.isMaximized,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('WindowPositionTableData(')
+          ..write('id: $id, ')
+          ..write('x: $x, ')
+          ..write('y: $y, ')
+          ..write('width: $width, ')
+          ..write('height: $height, ')
+          ..write('isMaximized: $isMaximized')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(id, x, y, width, height, isMaximized);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is WindowPositionTableData &&
+          other.id == this.id &&
+          other.x == this.x &&
+          other.y == this.y &&
+          other.width == this.width &&
+          other.height == this.height &&
+          other.isMaximized == this.isMaximized);
+}
+
+class WindowPositionTableCompanion
+    extends UpdateCompanion<WindowPositionTableData> {
+  final Value<int> id;
+  final Value<double> x;
+  final Value<double> y;
+  final Value<double?> width;
+  final Value<double?> height;
+  final Value<bool> isMaximized;
+  const WindowPositionTableCompanion({
+    this.id = const Value.absent(),
+    this.x = const Value.absent(),
+    this.y = const Value.absent(),
+    this.width = const Value.absent(),
+    this.height = const Value.absent(),
+    this.isMaximized = const Value.absent(),
+  });
+  WindowPositionTableCompanion.insert({
+    this.id = const Value.absent(),
+    required double x,
+    required double y,
+    this.width = const Value.absent(),
+    this.height = const Value.absent(),
+    this.isMaximized = const Value.absent(),
+  }) : x = Value(x),
+       y = Value(y);
+  static Insertable<WindowPositionTableData> custom({
+    Expression<int>? id,
+    Expression<double>? x,
+    Expression<double>? y,
+    Expression<double>? width,
+    Expression<double>? height,
+    Expression<bool>? isMaximized,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (x != null) 'x': x,
+      if (y != null) 'y': y,
+      if (width != null) 'width': width,
+      if (height != null) 'height': height,
+      if (isMaximized != null) 'is_maximized': isMaximized,
+    });
+  }
+
+  WindowPositionTableCompanion copyWith({
+    Value<int>? id,
+    Value<double>? x,
+    Value<double>? y,
+    Value<double?>? width,
+    Value<double?>? height,
+    Value<bool>? isMaximized,
+  }) {
+    return WindowPositionTableCompanion(
+      id: id ?? this.id,
+      x: x ?? this.x,
+      y: y ?? this.y,
+      width: width ?? this.width,
+      height: height ?? this.height,
+      isMaximized: isMaximized ?? this.isMaximized,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<int>(id.value);
+    }
+    if (x.present) {
+      map['x'] = Variable<double>(x.value);
+    }
+    if (y.present) {
+      map['y'] = Variable<double>(y.value);
+    }
+    if (width.present) {
+      map['width'] = Variable<double>(width.value);
+    }
+    if (height.present) {
+      map['height'] = Variable<double>(height.value);
+    }
+    if (isMaximized.present) {
+      map['is_maximized'] = Variable<bool>(isMaximized.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('WindowPositionTableCompanion(')
+          ..write('id: $id, ')
+          ..write('x: $x, ')
+          ..write('y: $y, ')
+          ..write('width: $width, ')
+          ..write('height: $height, ')
+          ..write('isMaximized: $isMaximized')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
   late final $EmployeeTableTable employeeTable = $EmployeeTableTable(this);
   late final $HistoryTableTable historyTable = $HistoryTableTable(this);
+  late final $RewardTableTable rewardTable = $RewardTableTable(this);
+  late final $WriteupTableTable writeupTable = $WriteupTableTable(this);
+  late final $WindowPositionTableTable windowPositionTable =
+      $WindowPositionTableTable(this);
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -764,6 +1758,9 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   List<DatabaseSchemaEntity> get allSchemaEntities => [
     employeeTable,
     historyTable,
+    rewardTable,
+    writeupTable,
+    windowPositionTable,
   ];
 }
 
@@ -1200,6 +2197,619 @@ typedef $$HistoryTableTableProcessedTableManager =
       HistoryTableData,
       PrefetchHooks Function()
     >;
+typedef $$RewardTableTableCreateCompanionBuilder =
+    RewardTableCompanion Function({
+      Value<int> id,
+      required String name,
+      required int pointsRequired,
+      Value<int?> sortOrder,
+    });
+typedef $$RewardTableTableUpdateCompanionBuilder =
+    RewardTableCompanion Function({
+      Value<int> id,
+      Value<String> name,
+      Value<int> pointsRequired,
+      Value<int?> sortOrder,
+    });
+
+class $$RewardTableTableFilterComposer
+    extends Composer<_$AppDatabase, $RewardTableTable> {
+  $$RewardTableTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get name => $composableBuilder(
+    column: $table.name,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get pointsRequired => $composableBuilder(
+    column: $table.pointsRequired,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get sortOrder => $composableBuilder(
+    column: $table.sortOrder,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$RewardTableTableOrderingComposer
+    extends Composer<_$AppDatabase, $RewardTableTable> {
+  $$RewardTableTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get name => $composableBuilder(
+    column: $table.name,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get pointsRequired => $composableBuilder(
+    column: $table.pointsRequired,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get sortOrder => $composableBuilder(
+    column: $table.sortOrder,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$RewardTableTableAnnotationComposer
+    extends Composer<_$AppDatabase, $RewardTableTable> {
+  $$RewardTableTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<int> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get name =>
+      $composableBuilder(column: $table.name, builder: (column) => column);
+
+  GeneratedColumn<int> get pointsRequired => $composableBuilder(
+    column: $table.pointsRequired,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get sortOrder =>
+      $composableBuilder(column: $table.sortOrder, builder: (column) => column);
+}
+
+class $$RewardTableTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $RewardTableTable,
+          RewardTableData,
+          $$RewardTableTableFilterComposer,
+          $$RewardTableTableOrderingComposer,
+          $$RewardTableTableAnnotationComposer,
+          $$RewardTableTableCreateCompanionBuilder,
+          $$RewardTableTableUpdateCompanionBuilder,
+          (
+            RewardTableData,
+            BaseReferences<_$AppDatabase, $RewardTableTable, RewardTableData>,
+          ),
+          RewardTableData,
+          PrefetchHooks Function()
+        > {
+  $$RewardTableTableTableManager(_$AppDatabase db, $RewardTableTable table)
+    : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$RewardTableTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$RewardTableTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$RewardTableTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                Value<String> name = const Value.absent(),
+                Value<int> pointsRequired = const Value.absent(),
+                Value<int?> sortOrder = const Value.absent(),
+              }) => RewardTableCompanion(
+                id: id,
+                name: name,
+                pointsRequired: pointsRequired,
+                sortOrder: sortOrder,
+              ),
+          createCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                required String name,
+                required int pointsRequired,
+                Value<int?> sortOrder = const Value.absent(),
+              }) => RewardTableCompanion.insert(
+                id: id,
+                name: name,
+                pointsRequired: pointsRequired,
+                sortOrder: sortOrder,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) => (
+                  e.readTable<$RewardTableTable, RewardTableData>(table),
+                  BaseReferences<
+                    _$AppDatabase,
+                    $RewardTableTable,
+                    RewardTableData
+                  >(db, table, e),
+                ),
+              )
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$RewardTableTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $RewardTableTable,
+      RewardTableData,
+      $$RewardTableTableFilterComposer,
+      $$RewardTableTableOrderingComposer,
+      $$RewardTableTableAnnotationComposer,
+      $$RewardTableTableCreateCompanionBuilder,
+      $$RewardTableTableUpdateCompanionBuilder,
+      (
+        RewardTableData,
+        BaseReferences<_$AppDatabase, $RewardTableTable, RewardTableData>,
+      ),
+      RewardTableData,
+      PrefetchHooks Function()
+    >;
+typedef $$WriteupTableTableCreateCompanionBuilder =
+    WriteupTableCompanion Function({
+      Value<int> id,
+      required String title,
+      required int points,
+      Value<int?> sortOrder,
+    });
+typedef $$WriteupTableTableUpdateCompanionBuilder =
+    WriteupTableCompanion Function({
+      Value<int> id,
+      Value<String> title,
+      Value<int> points,
+      Value<int?> sortOrder,
+    });
+
+class $$WriteupTableTableFilterComposer
+    extends Composer<_$AppDatabase, $WriteupTableTable> {
+  $$WriteupTableTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get title => $composableBuilder(
+    column: $table.title,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get points => $composableBuilder(
+    column: $table.points,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get sortOrder => $composableBuilder(
+    column: $table.sortOrder,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$WriteupTableTableOrderingComposer
+    extends Composer<_$AppDatabase, $WriteupTableTable> {
+  $$WriteupTableTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get title => $composableBuilder(
+    column: $table.title,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get points => $composableBuilder(
+    column: $table.points,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get sortOrder => $composableBuilder(
+    column: $table.sortOrder,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$WriteupTableTableAnnotationComposer
+    extends Composer<_$AppDatabase, $WriteupTableTable> {
+  $$WriteupTableTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<int> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get title =>
+      $composableBuilder(column: $table.title, builder: (column) => column);
+
+  GeneratedColumn<int> get points =>
+      $composableBuilder(column: $table.points, builder: (column) => column);
+
+  GeneratedColumn<int> get sortOrder =>
+      $composableBuilder(column: $table.sortOrder, builder: (column) => column);
+}
+
+class $$WriteupTableTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $WriteupTableTable,
+          WriteupTableData,
+          $$WriteupTableTableFilterComposer,
+          $$WriteupTableTableOrderingComposer,
+          $$WriteupTableTableAnnotationComposer,
+          $$WriteupTableTableCreateCompanionBuilder,
+          $$WriteupTableTableUpdateCompanionBuilder,
+          (
+            WriteupTableData,
+            BaseReferences<_$AppDatabase, $WriteupTableTable, WriteupTableData>,
+          ),
+          WriteupTableData,
+          PrefetchHooks Function()
+        > {
+  $$WriteupTableTableTableManager(_$AppDatabase db, $WriteupTableTable table)
+    : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$WriteupTableTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$WriteupTableTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$WriteupTableTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                Value<String> title = const Value.absent(),
+                Value<int> points = const Value.absent(),
+                Value<int?> sortOrder = const Value.absent(),
+              }) => WriteupTableCompanion(
+                id: id,
+                title: title,
+                points: points,
+                sortOrder: sortOrder,
+              ),
+          createCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                required String title,
+                required int points,
+                Value<int?> sortOrder = const Value.absent(),
+              }) => WriteupTableCompanion.insert(
+                id: id,
+                title: title,
+                points: points,
+                sortOrder: sortOrder,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) => (
+                  e.readTable<$WriteupTableTable, WriteupTableData>(table),
+                  BaseReferences<
+                    _$AppDatabase,
+                    $WriteupTableTable,
+                    WriteupTableData
+                  >(db, table, e),
+                ),
+              )
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$WriteupTableTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $WriteupTableTable,
+      WriteupTableData,
+      $$WriteupTableTableFilterComposer,
+      $$WriteupTableTableOrderingComposer,
+      $$WriteupTableTableAnnotationComposer,
+      $$WriteupTableTableCreateCompanionBuilder,
+      $$WriteupTableTableUpdateCompanionBuilder,
+      (
+        WriteupTableData,
+        BaseReferences<_$AppDatabase, $WriteupTableTable, WriteupTableData>,
+      ),
+      WriteupTableData,
+      PrefetchHooks Function()
+    >;
+typedef $$WindowPositionTableTableCreateCompanionBuilder =
+    WindowPositionTableCompanion Function({
+      Value<int> id,
+      required double x,
+      required double y,
+      Value<double?> width,
+      Value<double?> height,
+      Value<bool> isMaximized,
+    });
+typedef $$WindowPositionTableTableUpdateCompanionBuilder =
+    WindowPositionTableCompanion Function({
+      Value<int> id,
+      Value<double> x,
+      Value<double> y,
+      Value<double?> width,
+      Value<double?> height,
+      Value<bool> isMaximized,
+    });
+
+class $$WindowPositionTableTableFilterComposer
+    extends Composer<_$AppDatabase, $WindowPositionTableTable> {
+  $$WindowPositionTableTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<double> get x => $composableBuilder(
+    column: $table.x,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<double> get y => $composableBuilder(
+    column: $table.y,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<double> get width => $composableBuilder(
+    column: $table.width,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<double> get height => $composableBuilder(
+    column: $table.height,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get isMaximized => $composableBuilder(
+    column: $table.isMaximized,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$WindowPositionTableTableOrderingComposer
+    extends Composer<_$AppDatabase, $WindowPositionTableTable> {
+  $$WindowPositionTableTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<double> get x => $composableBuilder(
+    column: $table.x,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<double> get y => $composableBuilder(
+    column: $table.y,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<double> get width => $composableBuilder(
+    column: $table.width,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<double> get height => $composableBuilder(
+    column: $table.height,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get isMaximized => $composableBuilder(
+    column: $table.isMaximized,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$WindowPositionTableTableAnnotationComposer
+    extends Composer<_$AppDatabase, $WindowPositionTableTable> {
+  $$WindowPositionTableTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<int> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<double> get x =>
+      $composableBuilder(column: $table.x, builder: (column) => column);
+
+  GeneratedColumn<double> get y =>
+      $composableBuilder(column: $table.y, builder: (column) => column);
+
+  GeneratedColumn<double> get width =>
+      $composableBuilder(column: $table.width, builder: (column) => column);
+
+  GeneratedColumn<double> get height =>
+      $composableBuilder(column: $table.height, builder: (column) => column);
+
+  GeneratedColumn<bool> get isMaximized => $composableBuilder(
+    column: $table.isMaximized,
+    builder: (column) => column,
+  );
+}
+
+class $$WindowPositionTableTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $WindowPositionTableTable,
+          WindowPositionTableData,
+          $$WindowPositionTableTableFilterComposer,
+          $$WindowPositionTableTableOrderingComposer,
+          $$WindowPositionTableTableAnnotationComposer,
+          $$WindowPositionTableTableCreateCompanionBuilder,
+          $$WindowPositionTableTableUpdateCompanionBuilder,
+          (
+            WindowPositionTableData,
+            BaseReferences<
+              _$AppDatabase,
+              $WindowPositionTableTable,
+              WindowPositionTableData
+            >,
+          ),
+          WindowPositionTableData,
+          PrefetchHooks Function()
+        > {
+  $$WindowPositionTableTableTableManager(
+    _$AppDatabase db,
+    $WindowPositionTableTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$WindowPositionTableTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$WindowPositionTableTableOrderingComposer(
+                $db: db,
+                $table: table,
+              ),
+          createComputedFieldComposer: () =>
+              $$WindowPositionTableTableAnnotationComposer(
+                $db: db,
+                $table: table,
+              ),
+          updateCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                Value<double> x = const Value.absent(),
+                Value<double> y = const Value.absent(),
+                Value<double?> width = const Value.absent(),
+                Value<double?> height = const Value.absent(),
+                Value<bool> isMaximized = const Value.absent(),
+              }) => WindowPositionTableCompanion(
+                id: id,
+                x: x,
+                y: y,
+                width: width,
+                height: height,
+                isMaximized: isMaximized,
+              ),
+          createCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                required double x,
+                required double y,
+                Value<double?> width = const Value.absent(),
+                Value<double?> height = const Value.absent(),
+                Value<bool> isMaximized = const Value.absent(),
+              }) => WindowPositionTableCompanion.insert(
+                id: id,
+                x: x,
+                y: y,
+                width: width,
+                height: height,
+                isMaximized: isMaximized,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) => (
+                  e.readTable<
+                    $WindowPositionTableTable,
+                    WindowPositionTableData
+                  >(table),
+                  BaseReferences<
+                    _$AppDatabase,
+                    $WindowPositionTableTable,
+                    WindowPositionTableData
+                  >(db, table, e),
+                ),
+              )
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$WindowPositionTableTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $WindowPositionTableTable,
+      WindowPositionTableData,
+      $$WindowPositionTableTableFilterComposer,
+      $$WindowPositionTableTableOrderingComposer,
+      $$WindowPositionTableTableAnnotationComposer,
+      $$WindowPositionTableTableCreateCompanionBuilder,
+      $$WindowPositionTableTableUpdateCompanionBuilder,
+      (
+        WindowPositionTableData,
+        BaseReferences<
+          _$AppDatabase,
+          $WindowPositionTableTable,
+          WindowPositionTableData
+        >,
+      ),
+      WindowPositionTableData,
+      PrefetchHooks Function()
+    >;
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;
@@ -1208,6 +2818,12 @@ class $AppDatabaseManager {
       $$EmployeeTableTableTableManager(_db, _db.employeeTable);
   $$HistoryTableTableTableManager get historyTable =>
       $$HistoryTableTableTableManager(_db, _db.historyTable);
+  $$RewardTableTableTableManager get rewardTable =>
+      $$RewardTableTableTableManager(_db, _db.rewardTable);
+  $$WriteupTableTableTableManager get writeupTable =>
+      $$WriteupTableTableTableManager(_db, _db.writeupTable);
+  $$WindowPositionTableTableTableManager get windowPositionTable =>
+      $$WindowPositionTableTableTableManager(_db, _db.windowPositionTable);
 }
 
 mixin _$EmployeeDaoMixin on DatabaseAccessor<AppDatabase> {
