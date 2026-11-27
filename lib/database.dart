@@ -125,8 +125,16 @@ class AppDatabase extends _$AppDatabase {
         await m.addColumn(windowPositionTable, windowPositionTable.isMaximized);
       }
       if (from >= 5 && from < 12) {
-        await m.addColumn(historyTable, historyTable.undoData);
-        await m.addColumn(historyTable, historyTable.isUndone);
+        final columns = await customSelect(
+          'PRAGMA table_info(history_table)',
+        ).get();
+        final names = columns.map((column) => column.read<String>('name')).toSet();
+        if (!names.contains('undo_data')) {
+          await m.addColumn(historyTable, historyTable.undoData);
+        }
+        if (!names.contains('is_undone')) {
+          await m.addColumn(historyTable, historyTable.isUndone);
+        }
       }
       if (from < 9) {
         await transaction(() async {
