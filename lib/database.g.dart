@@ -382,6 +382,32 @@ class $HistoryTableTable extends HistoryTable
     requiredDuringInsert: false,
     defaultValue: currentDateAndTime,
   );
+  static const VerificationMeta _undoDataMeta = const VerificationMeta(
+    'undoData',
+  );
+  @override
+  late final GeneratedColumn<String> undoData = GeneratedColumn<String>(
+    'undo_data',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _isUndoneMeta = const VerificationMeta(
+    'isUndone',
+  );
+  @override
+  late final GeneratedColumn<bool> isUndone = GeneratedColumn<bool>(
+    'is_undone',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("is_undone" IN (0, 1))',
+    ),
+    defaultValue: const Constant(false),
+  );
   @override
   List<GeneratedColumn> get $columns => [
     id,
@@ -391,6 +417,8 @@ class $HistoryTableTable extends HistoryTable
     employee,
     points,
     createdAt,
+    undoData,
+    isUndone,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -448,6 +476,18 @@ class $HistoryTableTable extends HistoryTable
         createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
       );
     }
+    if (data.containsKey('undo_data')) {
+      context.handle(
+        _undoDataMeta,
+        undoData.isAcceptableOrUnknown(data['undo_data']!, _undoDataMeta),
+      );
+    }
+    if (data.containsKey('is_undone')) {
+      context.handle(
+        _isUndoneMeta,
+        isUndone.isAcceptableOrUnknown(data['is_undone']!, _isUndoneMeta),
+      );
+    }
     return context;
   }
 
@@ -485,6 +525,14 @@ class $HistoryTableTable extends HistoryTable
         DriftSqlType.dateTime,
         data['${effectivePrefix}created_at'],
       )!,
+      undoData: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}undo_data'],
+      ),
+      isUndone: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}is_undone'],
+      )!,
     );
   }
 
@@ -503,6 +551,8 @@ class HistoryTableData extends DataClass
   final String? employee;
   final String? points;
   final DateTime createdAt;
+  final String? undoData;
+  final bool isUndone;
   const HistoryTableData({
     required this.id,
     required this.actionType,
@@ -511,6 +561,8 @@ class HistoryTableData extends DataClass
     this.employee,
     this.points,
     required this.createdAt,
+    this.undoData,
+    required this.isUndone,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -526,6 +578,10 @@ class HistoryTableData extends DataClass
       map['points'] = Variable<String>(points);
     }
     map['created_at'] = Variable<DateTime>(createdAt);
+    if (!nullToAbsent || undoData != null) {
+      map['undo_data'] = Variable<String>(undoData);
+    }
+    map['is_undone'] = Variable<bool>(isUndone);
     return map;
   }
 
@@ -542,6 +598,10 @@ class HistoryTableData extends DataClass
           ? const Value.absent()
           : Value(points),
       createdAt: Value(createdAt),
+      undoData: undoData == null && nullToAbsent
+          ? const Value.absent()
+          : Value(undoData),
+      isUndone: Value(isUndone),
     );
   }
 
@@ -558,6 +618,8 @@ class HistoryTableData extends DataClass
       employee: serializer.fromJson<String?>(json['employee']),
       points: serializer.fromJson<String?>(json['points']),
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+      undoData: serializer.fromJson<String?>(json['undoData']),
+      isUndone: serializer.fromJson<bool>(json['isUndone']),
     );
   }
   @override
@@ -571,6 +633,8 @@ class HistoryTableData extends DataClass
       'employee': serializer.toJson<String?>(employee),
       'points': serializer.toJson<String?>(points),
       'createdAt': serializer.toJson<DateTime>(createdAt),
+      'undoData': serializer.toJson<String?>(undoData),
+      'isUndone': serializer.toJson<bool>(isUndone),
     };
   }
 
@@ -582,6 +646,8 @@ class HistoryTableData extends DataClass
     Value<String?> employee = const Value.absent(),
     Value<String?> points = const Value.absent(),
     DateTime? createdAt,
+    Value<String?> undoData = const Value.absent(),
+    bool? isUndone,
   }) => HistoryTableData(
     id: id ?? this.id,
     actionType: actionType ?? this.actionType,
@@ -590,6 +656,8 @@ class HistoryTableData extends DataClass
     employee: employee.present ? employee.value : this.employee,
     points: points.present ? points.value : this.points,
     createdAt: createdAt ?? this.createdAt,
+    undoData: undoData.present ? undoData.value : this.undoData,
+    isUndone: isUndone ?? this.isUndone,
   );
   HistoryTableData copyWithCompanion(HistoryTableCompanion data) {
     return HistoryTableData(
@@ -604,6 +672,8 @@ class HistoryTableData extends DataClass
       employee: data.employee.present ? data.employee.value : this.employee,
       points: data.points.present ? data.points.value : this.points,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+      undoData: data.undoData.present ? data.undoData.value : this.undoData,
+      isUndone: data.isUndone.present ? data.isUndone.value : this.isUndone,
     );
   }
 
@@ -616,7 +686,9 @@ class HistoryTableData extends DataClass
           ..write('actor: $actor, ')
           ..write('employee: $employee, ')
           ..write('points: $points, ')
-          ..write('createdAt: $createdAt')
+          ..write('createdAt: $createdAt, ')
+          ..write('undoData: $undoData, ')
+          ..write('isUndone: $isUndone')
           ..write(')'))
         .toString();
   }
@@ -630,6 +702,8 @@ class HistoryTableData extends DataClass
     employee,
     points,
     createdAt,
+    undoData,
+    isUndone,
   );
   @override
   bool operator ==(Object other) =>
@@ -641,7 +715,9 @@ class HistoryTableData extends DataClass
           other.actor == this.actor &&
           other.employee == this.employee &&
           other.points == this.points &&
-          other.createdAt == this.createdAt);
+          other.createdAt == this.createdAt &&
+          other.undoData == this.undoData &&
+          other.isUndone == this.isUndone);
 }
 
 class HistoryTableCompanion extends UpdateCompanion<HistoryTableData> {
@@ -652,6 +728,8 @@ class HistoryTableCompanion extends UpdateCompanion<HistoryTableData> {
   final Value<String?> employee;
   final Value<String?> points;
   final Value<DateTime> createdAt;
+  final Value<String?> undoData;
+  final Value<bool> isUndone;
   const HistoryTableCompanion({
     this.id = const Value.absent(),
     this.actionType = const Value.absent(),
@@ -660,6 +738,8 @@ class HistoryTableCompanion extends UpdateCompanion<HistoryTableData> {
     this.employee = const Value.absent(),
     this.points = const Value.absent(),
     this.createdAt = const Value.absent(),
+    this.undoData = const Value.absent(),
+    this.isUndone = const Value.absent(),
   });
   HistoryTableCompanion.insert({
     this.id = const Value.absent(),
@@ -669,6 +749,8 @@ class HistoryTableCompanion extends UpdateCompanion<HistoryTableData> {
     this.employee = const Value.absent(),
     this.points = const Value.absent(),
     this.createdAt = const Value.absent(),
+    this.undoData = const Value.absent(),
+    this.isUndone = const Value.absent(),
   }) : actionType = Value(actionType);
   static Insertable<HistoryTableData> custom({
     Expression<int>? id,
@@ -678,6 +760,8 @@ class HistoryTableCompanion extends UpdateCompanion<HistoryTableData> {
     Expression<String>? employee,
     Expression<String>? points,
     Expression<DateTime>? createdAt,
+    Expression<String>? undoData,
+    Expression<bool>? isUndone,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
@@ -687,6 +771,8 @@ class HistoryTableCompanion extends UpdateCompanion<HistoryTableData> {
       if (employee != null) 'employee': employee,
       if (points != null) 'points': points,
       if (createdAt != null) 'created_at': createdAt,
+      if (undoData != null) 'undo_data': undoData,
+      if (isUndone != null) 'is_undone': isUndone,
     });
   }
 
@@ -698,6 +784,8 @@ class HistoryTableCompanion extends UpdateCompanion<HistoryTableData> {
     Value<String?>? employee,
     Value<String?>? points,
     Value<DateTime>? createdAt,
+    Value<String?>? undoData,
+    Value<bool>? isUndone,
   }) {
     return HistoryTableCompanion(
       id: id ?? this.id,
@@ -707,6 +795,8 @@ class HistoryTableCompanion extends UpdateCompanion<HistoryTableData> {
       employee: employee ?? this.employee,
       points: points ?? this.points,
       createdAt: createdAt ?? this.createdAt,
+      undoData: undoData ?? this.undoData,
+      isUndone: isUndone ?? this.isUndone,
     );
   }
 
@@ -734,6 +824,12 @@ class HistoryTableCompanion extends UpdateCompanion<HistoryTableData> {
     if (createdAt.present) {
       map['created_at'] = Variable<DateTime>(createdAt.value);
     }
+    if (undoData.present) {
+      map['undo_data'] = Variable<String>(undoData.value);
+    }
+    if (isUndone.present) {
+      map['is_undone'] = Variable<bool>(isUndone.value);
+    }
     return map;
   }
 
@@ -746,7 +842,9 @@ class HistoryTableCompanion extends UpdateCompanion<HistoryTableData> {
           ..write('actor: $actor, ')
           ..write('employee: $employee, ')
           ..write('points: $points, ')
-          ..write('createdAt: $createdAt')
+          ..write('createdAt: $createdAt, ')
+          ..write('undoData: $undoData, ')
+          ..write('isUndone: $isUndone')
           ..write(')'))
         .toString();
   }
@@ -1961,6 +2059,8 @@ typedef $$HistoryTableTableCreateCompanionBuilder =
       Value<String?> employee,
       Value<String?> points,
       Value<DateTime> createdAt,
+      Value<String?> undoData,
+      Value<bool> isUndone,
     });
 typedef $$HistoryTableTableUpdateCompanionBuilder =
     HistoryTableCompanion Function({
@@ -1971,6 +2071,8 @@ typedef $$HistoryTableTableUpdateCompanionBuilder =
       Value<String?> employee,
       Value<String?> points,
       Value<DateTime> createdAt,
+      Value<String?> undoData,
+      Value<bool> isUndone,
     });
 
 class $$HistoryTableTableFilterComposer
@@ -2014,6 +2116,16 @@ class $$HistoryTableTableFilterComposer
 
   ColumnFilters<DateTime> get createdAt => $composableBuilder(
     column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get undoData => $composableBuilder(
+    column: $table.undoData,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get isUndone => $composableBuilder(
+    column: $table.isUndone,
     builder: (column) => ColumnFilters(column),
   );
 }
@@ -2061,6 +2173,16 @@ class $$HistoryTableTableOrderingComposer
     column: $table.createdAt,
     builder: (column) => ColumnOrderings(column),
   );
+
+  ColumnOrderings<String> get undoData => $composableBuilder(
+    column: $table.undoData,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get isUndone => $composableBuilder(
+    column: $table.isUndone,
+    builder: (column) => ColumnOrderings(column),
+  );
 }
 
 class $$HistoryTableTableAnnotationComposer
@@ -2096,6 +2218,12 @@ class $$HistoryTableTableAnnotationComposer
 
   GeneratedColumn<DateTime> get createdAt =>
       $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  GeneratedColumn<String> get undoData =>
+      $composableBuilder(column: $table.undoData, builder: (column) => column);
+
+  GeneratedColumn<bool> get isUndone =>
+      $composableBuilder(column: $table.isUndone, builder: (column) => column);
 }
 
 class $$HistoryTableTableTableManager
@@ -2136,6 +2264,8 @@ class $$HistoryTableTableTableManager
                 Value<String?> employee = const Value.absent(),
                 Value<String?> points = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
+                Value<String?> undoData = const Value.absent(),
+                Value<bool> isUndone = const Value.absent(),
               }) => HistoryTableCompanion(
                 id: id,
                 actionType: actionType,
@@ -2144,6 +2274,8 @@ class $$HistoryTableTableTableManager
                 employee: employee,
                 points: points,
                 createdAt: createdAt,
+                undoData: undoData,
+                isUndone: isUndone,
               ),
           createCompanionCallback:
               ({
@@ -2154,6 +2286,8 @@ class $$HistoryTableTableTableManager
                 Value<String?> employee = const Value.absent(),
                 Value<String?> points = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
+                Value<String?> undoData = const Value.absent(),
+                Value<bool> isUndone = const Value.absent(),
               }) => HistoryTableCompanion.insert(
                 id: id,
                 actionType: actionType,
@@ -2162,6 +2296,8 @@ class $$HistoryTableTableTableManager
                 employee: employee,
                 points: points,
                 createdAt: createdAt,
+                undoData: undoData,
+                isUndone: isUndone,
               ),
           withReferenceMapper: (p0) => p0
               .map(

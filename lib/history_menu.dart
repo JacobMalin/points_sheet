@@ -76,10 +76,54 @@ class HistoryMenu extends StatefulWidget {
 class _HistoryMenuState extends State<HistoryMenu> {
   late final Stream<List<HistoryTableData>> _entries;
 
+  static const _legacyUndoableActions = {
+    'Employee added',
+    'Employees added',
+    'Mass add points',
+    'Points added',
+    'Points removed',
+    'Points adjusted',
+    'Reward redeemed',
+    'Writeup',
+  };
+
   @override
   void initState() {
     super.initState();
     _entries = HistoryDao(context.read<AppDatabase>()).watchAllEntries();
+  }
+
+  Future<void> _undo(HistoryTableData entry) async {
+    final shouldUndo = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Undo this action?'),
+        content: Text('This will reverse "${entry.actionType}".'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            child: const Text('Undo'),
+          ),
+        ],
+      ),
+    );
+    if (shouldUndo != true || !mounted) return;
+
+    try {
+      await context.read<AppDatabase>().undoHistoryEntry(entry.id);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text('Undid ${entry.actionType}.')));
+    } catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Could not undo action: $error')));
+    }
   }
 
   @override
@@ -141,8 +185,17 @@ class _HistoryMenuState extends State<HistoryMenu> {
                     entry.actionType,
                     points: entry.points,
                   );
+                  final legacyDeletionUnavailable =
+                      entry.undoData == null &&
+                      entry.actionType == 'Employees deleted';
+                  final canUndo =
+                      !entry.isUndone &&
+                      entry.actionType != 'Action undone' &&
+                      (entry.undoData != null ||
+                          _legacyUndoableActions.contains(entry.actionType));
                   return ListTile(
                     dense: true,
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 16),
                     title: Row(
                       children: [
                         Expanded(
@@ -223,6 +276,24 @@ class _HistoryMenuState extends State<HistoryMenu> {
                         ),
                       ],
                     ),
+                    trailing: entry.isUndone
+                        ? const Tooltip(
+                            message: 'Already undone',
+                            child: Icon(Icons.undo, color: Colors.grey),
+                          )
+                        : legacyDeletionUnavailable
+                        ? const Tooltip(
+                            message:
+                                'Undo is unavailable for older deletions '
+                                'because employee details were not saved.',
+                            child: Icon(Icons.undo, color: Colors.grey),
+                          )
+                        : canUndo
+                        ? IconButton(
+                            onPressed: () => _undo(entry),
+                            icon: const Icon(Icons.undo),
+                          )
+                        : null,
                   );
                 },
               );

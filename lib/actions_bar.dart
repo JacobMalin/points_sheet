@@ -216,6 +216,7 @@ class _ActionsBarState extends State<ActionsBar> {
               .toSet();
           final duplicates = <String>{};
           final uniqueEmployees = <_EmployeeName>[];
+          final addedEmployeeIds = <int>[];
 
           for (final employee in employeesToAdd.employees) {
             if (!existingNames.add(
@@ -231,9 +232,11 @@ class _ActionsBarState extends State<ActionsBar> {
 
           final historyDao = HistoryDao(database);
           for (final employee in uniqueEmployees) {
-            await dao.addEmployee(
-              firstName: employee.firstName,
-              lastName: employee.lastName,
+            addedEmployeeIds.add(
+              await dao.addEmployee(
+                firstName: employee.firstName,
+                lastName: employee.lastName,
+              ),
             );
           }
           if (uniqueEmployees.isNotEmpty) {
@@ -249,6 +252,7 @@ class _ActionsBarState extends State<ActionsBar> {
                   )
                   .join('\n'),
               actor: '',
+              undoData: HistoryDao.employeesAddedUndoData(addedEmployeeIds),
             );
           }
           return duplicates.toList();
@@ -508,6 +512,7 @@ class _ActionsBarState extends State<ActionsBar> {
         final historyDao = HistoryDao(database);
         final employeeNames = <String>[];
         final deletedPointValues = <String>[];
+        final deletedEmployees = <EmployeeTableData>[];
         var totalPointsDeleted = 0;
         final currentEmployees = {
           for (final employee in await dao.getAllEmployees())
@@ -525,6 +530,7 @@ class _ActionsBarState extends State<ActionsBar> {
           employeeNames.add(employeeName);
           totalPointsDeleted += employee.data.points;
           deletedPointValues.add(employee.formattedPoints);
+          deletedEmployees.add(employee.data);
         }
         if (employeeNames.isNotEmpty) {
           await historyDao.addEntry(
@@ -534,6 +540,7 @@ class _ActionsBarState extends State<ActionsBar> {
             actor: '',
             employee: employeeNames.join('\n'),
             points: deletedPointValues.join('\n'),
+            undoData: HistoryDao.employeesDeletedUndoData(deletedEmployees),
           );
         }
       });
@@ -1330,6 +1337,7 @@ class _MassAddPointsDialogState extends State<_MassAddPointsDialog> {
         final historyDao = HistoryDao(database);
         final employeeNames = <String>[];
         final pointsAdded = <String>[];
+        final pointChanges = <int, int>{};
         final currentEmployees = await dao.getAllEmployees();
         for (final employee in currentEmployees) {
           final amountText = _controllers[employee.data.id]?.text.trim() ?? '';
@@ -1346,6 +1354,7 @@ class _MassAddPointsDialogState extends State<_MassAddPointsDialog> {
               '${employee.data.firstName} ${employee.data.lastName}'.trim();
           employeeNames.add(employeeName);
           pointsAdded.add('+${NumberFormat().format(amount)}');
+          pointChanges[employee.data.id] = amount;
         }
         if (employeeNames.isNotEmpty) {
           await historyDao.addEntry(
@@ -1354,6 +1363,7 @@ class _MassAddPointsDialogState extends State<_MassAddPointsDialog> {
             actor: _managerController.text.trim(),
             employee: employeeNames.reversed.join('\n'),
             points: pointsAdded.reversed.join('\n'),
+            undoData: HistoryDao.pointsUndoData(pointChanges),
           );
         }
       });
