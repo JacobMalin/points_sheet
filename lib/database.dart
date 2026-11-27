@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:drift/drift.dart';
 import 'package:drift_flutter/drift_flutter.dart';
 import 'package:intl/intl.dart';
@@ -39,6 +41,8 @@ class HistoryTable extends Table {
   TextColumn get employee => text().nullable()();
   TextColumn get points => text().nullable()();
   DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
+  TextColumn get undoData => text().nullable()();
+  BoolColumn get isUndone => boolean().withDefault(const Constant(false))();
 }
 
 class RewardTable extends Table {
@@ -80,7 +84,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase([QueryExecutor? executor]) : super(executor ?? _openConnection());
 
   @override
-  int get schemaVersion => 11;
+  int get schemaVersion => 12;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -120,6 +124,10 @@ class AppDatabase extends _$AppDatabase {
       if (from >= 8 && from < 11) {
         await m.addColumn(windowPositionTable, windowPositionTable.isMaximized);
       }
+      if (from >= 5 && from < 12) {
+        await m.addColumn(historyTable, historyTable.undoData);
+        await m.addColumn(historyTable, historyTable.isUndone);
+      }
       if (from < 9) {
         await transaction(() async {
           final latest =
@@ -139,22 +147,285 @@ class AppDatabase extends _$AppDatabase {
   );
 
   Future<void> _seedRewardsAndWriteups() async {
+    final rewards = await select(rewardTable).get();
+    final writeups = await select(writeupTable).get();
+
     await batch((batch) {
-      batch.insertAll(rewardTable, [
-        RewardTableCompanion.insert(name: 'Mocktail', pointsRequired: 250),
-        RewardTableCompanion.insert(name: 'Hot Food', pointsRequired: 500),
-        RewardTableCompanion.insert(
-          name: 'Any Concessions',
-          pointsRequired: 1000,
-        ),
-      ]);
-      batch.insertAll(writeupTable, [
-        WriteupTableCompanion.insert(title: 'Behavior', points: 100),
-        WriteupTableCompanion.insert(title: 'Attendance', points: 500),
-        WriteupTableCompanion.insert(title: 'Till', points: 50),
-      ]);
+      if (rewards.isEmpty) {
+        batch.insertAll(rewardTable, [
+          RewardTableCompanion.insert(name: 'Mocktail', pointsRequired: 250),
+          RewardTableCompanion.insert(name: 'Hot Food', pointsRequired: 500),
+          RewardTableCompanion.insert(
+            name: 'Any Concessions',
+            pointsRequired: 1000,
+          ),
+        ]);
+      }
+      if (writeups.isEmpty) {
+        batch.insertAll(writeupTable, [
+          WriteupTableCompanion.insert(title: 'Behavior', points: 100),
+          WriteupTableCompanion.insert(title: 'Attendance', points: 500),
+          WriteupTableCompanion.insert(title: 'Till', points: 50),
+        ]);
+      }
     });
   }
+
+  Future<void> undoHistoryEntry(int id) => transaction(() async {
+    final entry = await (select(
+      historyTable,
+    )..where((history) => history.id.equals(id))).getSingleOrNull();
+    if (entry == null) throw StateError('History entry was not found.');
+    if (entry.isUndone || entry.actionType == 'Action undone') {
+      throw StateError('This action has already been undone.');
+    }
+
+    final undoData = entry.undoData == null
+        ? await _legacyUndoData(entry)
+        : _decodeUndoData(entry.undoData!);
+    switch (undoData['kind']) {
+      case 'points':
+        await _undoPoints(undoData);
+        break;
+      case 'employeesAdded':
+        await _undoEmployeesAdded(undoData);
+        break;
+      case 'employeesDeleted':
+        await _undoEmployeesDeleted(undoData);
+        break;
+      default:
+        throw StateError('This history entry cannot be undone.');
+    }
+
+    await (delete(
+      historyTable,
+    )..where((history) => history.id.equals(id))).go();
+  });
+
+  Map<String, dynamic> _decodeUndoData(String value) {
+    final decoded = jsonDecode(value);
+    if (decoded is! Map<String, dynamic>) {
+      throw const FormatException('Invalid undo data.');
+    }
+    return decoded;
+  }
+
+  Future<Map<String, dynamic>> _legacyUndoData(HistoryTableData entry) async {
+    if (entry.actionType == 'Employees deleted') {
+      throw StateError(
+        "This older deletion cannot be undone because it did not save "
+        "the employees' complete details.",
+      );
+    }
+
+    if (entry.actionType == 'Employee added' ||
+        entry.actionType == 'Employees added') {
+      final names = _historyNames(entry);
+      final employees = await select(employeeTable).get();
+      final ids = <int>[];
+      for (final name in names) {
+        final matches = employees
+            .where(
+              (employee) =>
+                  _employeeNameKey(employee.firstName, employee.lastName) ==
+                  _normalizeEmployeeName(name),
+            )
+            .toList();
+        if (matches.length != 1) {
+          throw StateError('Could not uniquely find employee "$name".');
+        }
+        ids.add(matches.single.id);
+      }
+      return {'kind': 'employeesAdded', 'employeeIds': ids};
+    }
+
+    const pointActions = {
+      'Mass add points',
+      'Points added',
+      'Points removed',
+      'Points adjusted',
+      'Reward redeemed',
+      'Writeup',
+    };
+    if (!pointActions.contains(entry.actionType)) {
+      throw StateError('This history entry cannot be undone.');
+    }
+
+    final names = _historyNames(entry);
+    final points = (entry.points ?? '')
+        .split('\n')
+        .map(_parseHistoryPoints)
+        .toList();
+    if (points.length != names.length || points.any((value) => value == null)) {
+      throw StateError('This history entry does not contain valid point data.');
+    }
+
+    final employees = await select(employeeTable).get();
+    final changes = <Map<String, int>>[];
+    for (var index = 0; index < names.length; index++) {
+      final matches = employees
+          .where(
+            (employee) =>
+                _employeeNameKey(employee.firstName, employee.lastName) ==
+                _normalizeEmployeeName(names[index]),
+          )
+          .toList();
+      if (matches.length != 1) {
+        throw StateError('Could not uniquely find employee "${names[index]}".');
+      }
+      changes.add({'employeeId': matches.single.id, 'delta': points[index]!});
+    }
+    return {'kind': 'points', 'changes': changes};
+  }
+
+  List<String> _historyNames(HistoryTableData entry) {
+    final names = (entry.employee ?? '')
+        .split('\n')
+        .map((name) => name.trim())
+        .where((name) => name.isNotEmpty)
+        .toList();
+    if (names.isEmpty) throw StateError('Employee information is missing.');
+    return names;
+  }
+
+  int? _parseHistoryPoints(String value) {
+    final normalized = value.replaceAll(RegExp(r'[^0-9+-]'), '');
+    return int.tryParse(normalized);
+  }
+
+  Future<void> _undoPoints(Map<String, dynamic> data) async {
+    final changes = data['changes'];
+    if (changes is! List || changes.isEmpty) {
+      throw const FormatException('Undo data has no point changes.');
+    }
+
+    final parsed = <(int, int)>[];
+    for (final change in changes) {
+      if (change is! Map) {
+        throw const FormatException('Invalid point undo data.');
+      }
+      final employeeId = change['employeeId'];
+      final delta = change['delta'];
+      if (employeeId is! int || delta is! int) {
+        throw const FormatException('Invalid point undo data.');
+      }
+      parsed.add((employeeId, delta));
+    }
+    if (parsed.map((change) => change.$1).toSet().length != parsed.length) {
+      throw const FormatException('Undo data contains duplicate employees.');
+    }
+
+    final updates = <EmployeeTableData>[];
+    for (final (employeeId, delta) in parsed) {
+      final current = await (select(
+        employeeTable,
+      )..where((employee) => employee.id.equals(employeeId))).getSingleOrNull();
+      if (current == null) {
+        throw StateError('An affected employee no longer exists.');
+      }
+      final points = BigInt.from(current.points) - BigInt.from(delta);
+      final minPoints = -(BigInt.one << 63);
+      final maxPoints = (BigInt.one << 63) - BigInt.one;
+      if (points < minPoints || points > maxPoints) {
+        throw StateError('Undo would put an employee balance out of range.');
+      }
+      updates.add(current.copyWith(points: points.toInt()));
+    }
+    for (final employee in updates) {
+      if (!await update(employeeTable).replace(employee)) {
+        throw StateError('An affected employee could not be updated.');
+      }
+    }
+  }
+
+  Future<void> _undoEmployeesAdded(Map<String, dynamic> data) async {
+    final ids = data['employeeIds'];
+    if (ids is! List || ids.isEmpty || ids.any((id) => id is! int)) {
+      throw const FormatException('Invalid employee undo data.');
+    }
+
+    final employees = <EmployeeTableData>[];
+    for (final id in ids.cast<int>()) {
+      final employee = await (select(
+        employeeTable,
+      )..where((row) => row.id.equals(id))).getSingleOrNull();
+      if (employee == null) {
+        throw StateError('An added employee no longer exists.');
+      }
+      if (employee.points != 0) {
+        throw StateError(
+          'Undo later actions affecting these employees before undoing '
+          'their addition.',
+        );
+      }
+      employees.add(employee);
+    }
+    for (final employee in employees) {
+      await (delete(
+        employeeTable,
+      )..where((row) => row.id.equals(employee.id))).go();
+    }
+  }
+
+  Future<void> _undoEmployeesDeleted(Map<String, dynamic> data) async {
+    final snapshots = data['employees'];
+    if (snapshots is! List || snapshots.isEmpty) {
+      throw const FormatException('Invalid employee undo data.');
+    }
+    final currentEmployees = await select(employeeTable).get();
+    final restored = <EmployeeTableData>[];
+    for (final snapshot in snapshots) {
+      if (snapshot is! Map) {
+        throw const FormatException('Invalid employee undo data.');
+      }
+      final id = snapshot['id'];
+      final firstName = snapshot['firstName'];
+      final lastName = snapshot['lastName'];
+      final points = snapshot['points'];
+      if (id is! int ||
+          firstName is! String ||
+          lastName is! String ||
+          points is! int) {
+        throw const FormatException('Invalid employee undo data.');
+      }
+      if (currentEmployees.any((employee) => employee.id == id)) {
+        throw StateError('An employee ID needed for undo is already in use.');
+      }
+      if (currentEmployees.any(
+        (employee) =>
+            _employeeNameKey(employee.firstName, employee.lastName) ==
+            _employeeNameKey(firstName, lastName),
+      )) {
+        throw StateError(
+          'An employee with the name "$firstName $lastName" already exists.',
+        );
+      }
+      restored.add(
+        EmployeeTableData(
+          id: id,
+          firstName: firstName,
+          lastName: lastName,
+          points: points,
+        ),
+      );
+    }
+    for (final employee in restored) {
+      await into(employeeTable).insert(
+        EmployeeTableCompanion.insert(
+          id: Value(employee.id),
+          firstName: employee.firstName,
+          lastName: Value(employee.lastName),
+          points: Value(employee.points),
+        ),
+      );
+    }
+  }
+
+  String _employeeNameKey(String firstName, String lastName) =>
+      _normalizeEmployeeName('$firstName $lastName');
+
+  String _normalizeEmployeeName(String name) =>
+      name.trim().toLowerCase().replaceAll(RegExp(r'\s+'), ' ');
 
   Stream<List<RewardTableData>> watchRewards() =>
       (select(rewardTable)..orderBy([
@@ -299,6 +570,7 @@ class HistoryDao extends DatabaseAccessor<AppDatabase> with _$HistoryDaoMixin {
     required String actor,
     String? employee,
     String? points,
+    String? undoData,
   }) => into(historyTable).insert(
     HistoryTableCompanion.insert(
       actionType: actionType,
@@ -306,6 +578,32 @@ class HistoryDao extends DatabaseAccessor<AppDatabase> with _$HistoryDaoMixin {
       actor: Value(actor),
       employee: Value(employee),
       points: Value(points),
+      undoData: Value(undoData),
     ),
   );
+
+  static String pointsUndoData(Map<int, int> changes) => jsonEncode({
+    'kind': 'points',
+    'changes': [
+      for (final change in changes.entries)
+        {'employeeId': change.key, 'delta': change.value},
+    ],
+  });
+
+  static String employeesAddedUndoData(List<int> employeeIds) =>
+      jsonEncode({'kind': 'employeesAdded', 'employeeIds': employeeIds});
+
+  static String employeesDeletedUndoData(List<EmployeeTableData> employees) =>
+      jsonEncode({
+        'kind': 'employeesDeleted',
+        'employees': [
+          for (final employee in employees)
+            {
+              'id': employee.id,
+              'firstName': employee.firstName,
+              'lastName': employee.lastName,
+              'points': employee.points,
+            },
+        ],
+      });
 }

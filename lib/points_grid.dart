@@ -327,6 +327,9 @@ class _PointsGridState extends State<PointsGrid> {
                                       .trim(),
                               points:
                                   '${amount >= 0 ? '+' : ''}${NumberFormat().format(amount)}',
+                              undoData: HistoryDao.pointsUndoData({
+                                current.id: amount,
+                              }),
                             );
                           });
 
@@ -1109,6 +1112,7 @@ class _AdjustPointsDialogState extends State<_AdjustPointsDialog> {
           actor: _manager.text.trim(),
           employee: '${current.firstName} ${current.lastName}'.trim(),
           points: '${amount >= 0 ? '+' : ''}${NumberFormat().format(amount)}',
+          undoData: HistoryDao.pointsUndoData({current.id: amount}),
         );
         return Employee(newEmployee);
       });
@@ -1387,6 +1391,9 @@ class PointCard extends StatelessWidget {
           actor: '',
           employee: employeeName,
           points: '-${NumberFormat().format(pointsRemoved)}',
+          undoData: HistoryDao.pointsUndoData({
+            currentEmployee.data.id: -pointsRemoved,
+          }),
         );
       });
 
@@ -1454,6 +1461,9 @@ class PointCard extends StatelessWidget {
           actor: '',
           employee: employeeName,
           points: "-${NumberFormat().format(reward.pointsRequired)}",
+          undoData: HistoryDao.pointsUndoData({
+            currentEmployee.data.id: -reward.pointsRequired,
+          }),
         );
       });
 
